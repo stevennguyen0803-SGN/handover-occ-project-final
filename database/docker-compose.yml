@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: occ-handover-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: occ_handover
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - occ_handover_pgdata:/var/lib/postgresql/data
+
+volumes:
+  occ_handover_pgdata:
