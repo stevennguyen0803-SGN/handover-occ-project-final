@@ -1,7 +1,9 @@
 node_modules/
 dist/
-.next/
+tempdist/
 .env
+.env.local
+.env.staging
 coverage/
 *.log
-infrastructure/staging/.env.staging
+.DS_Store

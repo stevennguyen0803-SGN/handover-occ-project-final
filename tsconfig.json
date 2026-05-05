@@ -11,5 +11,5 @@
     "types": ["node", "vitest/globals"]
   },
   "include": ["tests/**/*.ts", "vitest.config.mts"],
-  "exclude": ["node_modules", "frontend", "backend", "dist"]
+  "exclude": ["node_modules", "backend", "dist"]
 }

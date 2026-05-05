@@ -11,10 +11,6 @@ import { afterAll, describe, expect, it } from 'vitest'
 
 const prisma = new PrismaClient()
 
-const FRONTEND_URL =
-  process.env.SMOKE_FRONTEND_URL ??
-  process.env.NEXTAUTH_URL ??
-  'http://localhost:3000'
 const BACKEND_URL =
   process.env.SMOKE_BACKEND_URL ??
   process.env.BACKEND_URL ??
@@ -385,11 +381,6 @@ describe('Task 4.4 local smoke tests', () => {
       ])
 
       try {
-        const loginPageResponse = await fetch(new URL('/login', FRONTEND_URL))
-
-        expect(loginPageResponse.status).toBe(200)
-        expect(await loginPageResponse.text()).toContain('Sign in')
-
         const healthResponse = await fetch(new URL('/health', BACKEND_URL))
 
         expect(healthResponse.status).toBe(200)
