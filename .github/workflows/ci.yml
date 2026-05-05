@@ -30,11 +30,25 @@ jobs:
       - name: Install backend dependencies
         run: npm --prefix backend ci
 
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
       - name: Generate Prisma client
         run: npm run db:generate
 
       - name: Run unit tests
         run: npm test
 
+      - name: Typecheck frontend
+        run: npm run typecheck:frontend
+
       - name: Build backend
-        run: npm run build
+        run: npm run build:backend
+
+      - name: Build frontend
+        env:
+          NEXTAUTH_SECRET: ci-only-secret
+          AUTH_SECRET: ci-only-secret
+          DATABASE_URL: postgresql://localhost:5432/ci
+          DIRECT_URL: postgresql://localhost:5432/ci
+        run: npm run build:frontend
