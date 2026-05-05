@@ -308,7 +308,11 @@ KPI summary for the dashboard.
     "monitoringItems": 4,
     "resolvedItems": 8,
     "criticalItems": 2,
-    "unacknowledgedHighPriority": 1
+    "unacknowledgedHighPriority": 1,
+    "flightsAffected": 7,
+    "byPriority": { "Low": 0, "Normal": 1, "High": 1, "Critical": 1 },
+    "byShift": { "Morning": 1, "Afternoon": 1, "Night": 1 },
+    "abnormalEventsByType": { "AOG": 2, "Diversion": 1 }
   },
   "trend7Days": [
     { "date": "2025-06-09", "open": 5, "resolved": 3 },
