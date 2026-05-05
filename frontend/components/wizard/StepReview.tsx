@@ -38,7 +38,7 @@ export function StepReview({ draft, recipients }: StepReviewProps) {
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {enabledCategories.map((c) => (
                 <Badge key={c.code} tone="neutral">
-                  {c.longLabel} · {draft.categories[c.code]?.itemCount ?? 0}
+                  {c.longLabel} · {draft.categories[c.code]?.items.length ?? 0}
                 </Badge>
               ))}
             </ul>

@@ -23,7 +23,9 @@ import {
   createUser,
   deactivateUser,
   getSelfProfile,
+  listRecipients,
   listUsers,
+  revokeSelfSessions,
   updateSelfProfile,
   updateUser,
 } from '../../../backend/src/services/users.service'
@@ -301,5 +303,55 @@ describe('deactivateUser', () => {
       data: { isActive: false },
     })
     expect(user.isActive).toBe(false)
+  })
+})
+
+describe('listRecipients', () => {
+  it('returns active users id/name/role only', async () => {
+    prismaMock.user.findMany.mockResolvedValueOnce([
+      { id: 'u-1', name: 'Alice', role: 'SUPERVISOR' },
+      { id: 'u-2', name: 'Bob', role: 'OCC_STAFF' },
+    ])
+
+    const recipients = await listRecipients()
+
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+      orderBy: [{ name: 'asc' }],
+      select: { id: true, name: true, role: true },
+    })
+    expect(recipients).toEqual([
+      { id: 'u-1', name: 'Alice', role: 'SUPERVISOR' },
+      { id: 'u-2', name: 'Bob', role: 'OCC_STAFF' },
+    ])
+  })
+})
+
+describe('revokeSelfSessions', () => {
+  it('stamps sessionsRevokedAt = now()', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(makeUser())
+    prismaMock.user.update.mockResolvedValueOnce(makeUser())
+
+    await revokeSelfSessions('user-1')
+
+    expect(prismaMock.user.update).toHaveBeenCalledTimes(1)
+    const args = prismaMock.user.update.mock.calls[0]?.[0] as
+      | { where: { id: string }; data: { sessionsRevokedAt: Date } }
+      | undefined
+    expect(args?.where).toEqual({ id: 'user-1' })
+    expect(args?.data.sessionsRevokedAt).toBeInstanceOf(Date)
+    // Within 5 seconds of "now"
+    const delta = Math.abs(
+      (args?.data.sessionsRevokedAt as Date).getTime() - Date.now()
+    )
+    expect(delta).toBeLessThan(5_000)
+  })
+
+  it('throws NOT_FOUND when the user does not exist', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(null)
+
+    await expect(revokeSelfSessions('missing')).rejects.toSatisfy(
+      (e) => isServiceError(e) && e.code === 'NOT_FOUND'
+    )
   })
 })

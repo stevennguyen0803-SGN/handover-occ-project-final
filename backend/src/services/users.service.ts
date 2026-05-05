@@ -112,6 +112,46 @@ export async function changeSelfPassword(
   })
 }
 
+/**
+ * Stamps the user's `sessionsRevokedAt = now()`. Every signed
+ * `X-OCC-AUTH-*` request older than this cut-off is rejected by
+ * `attachAuthenticatedUser`, which forces existing sessions on other
+ * devices to fail with 403 on the next backend call. Clients should
+ * follow up with a local NextAuth.js `signOut()` for the current tab.
+ */
+export async function revokeSelfSessions(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) {
+    throw new ServiceError(404, 'NOT_FOUND', 'User not found')
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { sessionsRevokedAt: new Date() },
+  })
+}
+
+export type RecipientSummary = {
+  id: string
+  name: string
+  role: UserRole
+}
+
+/**
+ * Lists active users any authenticated role may pick as the receiver of
+ * a handover (BR-12). Intentionally narrower than `listUsers`: no email
+ * or timestamps, since OCC_STAFF / SUPERVISOR / MANAGEMENT_VIEWER do
+ * not need the admin directory.
+ */
+export async function listRecipients(): Promise<RecipientSummary[]> {
+  const users = await prisma.user.findMany({
+    where: { isActive: true },
+    orderBy: [{ name: 'asc' }],
+    select: { id: true, name: true, role: true },
+  })
+  return users
+}
+
 export type UserSummary = {
   id: string
   email: string

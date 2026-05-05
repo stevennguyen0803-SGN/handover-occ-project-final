@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { signOut } from 'next-auth/react'
 
 import { PreferencesSection } from '@/components/settings/PreferencesSection'
 import { ProfileSection } from '@/components/settings/ProfileSection'
@@ -85,6 +86,19 @@ export default function SettingsPage() {
 
   const savePreferences = (_next: PreferenceState): void => undefined
 
+  const revokeAllSessions = async (): Promise<void> => {
+    const res = await fetch('/api/v1/users/me/sessions/revoke', {
+      method: 'POST',
+    })
+    if (!res.ok && res.status !== 204) {
+      throw new Error('Failed to revoke sessions')
+    }
+    // Backend has stamped sessionsRevokedAt; sign out the current tab so
+    // NextAuth's cookie disappears too. Other devices will get 403 on
+    // their next backend call and bounce to /signin.
+    await signOut({ callbackUrl: '/signin' })
+  }
+
   if (!profile) {
     return (
       <div className="rounded-md border border-line bg-bg-elev p-6 text-fg-soft">
@@ -113,7 +127,12 @@ export default function SettingsPage() {
             />
           )
         }
-        return <SecuritySection onChangePassword={changePassword} />
+        return (
+          <SecuritySection
+            onChangePassword={changePassword}
+            onSignOutAllSessions={revokeAllSessions}
+          />
+        )
       }}
     </SettingsLayout>
   )

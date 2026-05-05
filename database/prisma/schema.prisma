@@ -44,18 +44,21 @@ enum AuditAction {
 }
 
 model User {
-  id                String           @id @default(cuid())
-  email             String           @unique
-  name              String
-  passwordHash      String?
-  role              UserRole         @default(OCC_STAFF)
-  isActive          Boolean          @default(true)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  handoversPrepared Handover[]       @relation("PreparedBy")
-  handoversReceived Handover[]       @relation("HandedTo")
-  auditLogs         AuditLog[]
-  acknowledgments   Acknowledgment[]
+  id                 String           @id @default(cuid())
+  email              String           @unique
+  name               String
+  passwordHash       String?
+  role               UserRole         @default(OCC_STAFF)
+  isActive           Boolean          @default(true)
+  // Cutoff for "revoke all sessions" — every signed backend request whose
+  // X-OCC-AUTH-* timestamp is older than this is rejected as expired.
+  sessionsRevokedAt  DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  handoversPrepared  Handover[]       @relation("PreparedBy")
+  handoversReceived  Handover[]       @relation("HandedTo")
+  auditLogs          AuditLog[]
+  acknowledgments    Acknowledgment[]
 }
 
 model Handover {
