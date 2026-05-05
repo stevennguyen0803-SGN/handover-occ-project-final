@@ -5,6 +5,7 @@ import { AcknowledgeButton } from '@/components/handover/AcknowledgeButton'
 import { AuditTrail } from '@/components/handover/AuditTrail'
 import { CarryForwardLink } from '@/components/handover/CarryForwardLink'
 import { CategorySection } from '@/components/handover/CategorySection'
+import { ExportPdfButton } from '@/components/handover/ExportPdfButton'
 import { HandoverHeader } from '@/components/handover/HandoverHeader'
 import { toItemView } from '@/lib/handover/toItemView'
 import { backendFetch, BackendApiError } from '@/lib/server/api-client'
@@ -98,11 +99,14 @@ export default async function HandoverDetailPage({
         <HandoverHeader
           handover={headerHandover}
           rightSlot={
-            <AcknowledgeButton
-              acknowledge={acknowledgeAction}
-              disabled={ownHandover}
-              alreadyAcknowledged={Boolean(handover.acknowledgedAt)}
-            />
+            <>
+              <ExportPdfButton handoverId={handover.id} />
+              <AcknowledgeButton
+                acknowledge={acknowledgeAction}
+                disabled={ownHandover}
+                alreadyAcknowledged={Boolean(handover.acknowledgedAt)}
+              />
+            </>
           }
         />
         {handover.carriedFromId && handover.carriedFromReference && (
