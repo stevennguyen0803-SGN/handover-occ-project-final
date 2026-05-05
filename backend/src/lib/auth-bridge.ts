@@ -94,9 +94,15 @@ export function createBackendAuthHeaders(
   }
 }
 
+export type ExtractedAuthenticatedRequest = {
+  user: AuthenticatedUser
+  /** Numeric epoch-ms timestamp the frontend signed the request with. */
+  signedAt: number
+}
+
 export function extractAuthenticatedUserFromRequest(
   req: Pick<Request, 'header'>
-): AuthenticatedUser | null {
+): ExtractedAuthenticatedRequest | null {
   const secret = getAuthSecret()
 
   if (!secret) {
@@ -132,5 +138,9 @@ export function extractAuthenticatedUserFromRequest(
 
   const expectedSignature = buildBackendAuthSignature(user, timestamp, secret)
 
-  return signaturesMatch(expectedSignature, signature) ? user : null
+  if (!signaturesMatch(expectedSignature, signature)) {
+    return null
+  }
+
+  return { user, signedAt: Number(timestamp) }
 }

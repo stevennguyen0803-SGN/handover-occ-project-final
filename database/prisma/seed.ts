@@ -292,6 +292,18 @@ async function main() {
     })),
   })
 
+  // Seed inserts handovers with explicit referenceIds (HDO-2026-000001..5)
+  // but doesn't advance the sequence the runtime uses to mint new IDs. If
+  // we don't sync, the very next `POST /api/v1/handovers` collides with
+  // the seeded rows. Sync to the highest seeded suffix.
+  await prisma.$executeRawUnsafe(
+    `SELECT setval('handover_reference_seq', GREATEST(
+       (SELECT COALESCE(MAX(CAST(RIGHT("referenceId", 6) AS BIGINT)), 0)
+        FROM "Handover"),
+       1
+     ), true)`
+  )
+
   console.log('Seed data created successfully.')
 }
 

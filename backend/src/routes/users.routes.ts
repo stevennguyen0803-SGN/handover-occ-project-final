@@ -14,7 +14,9 @@ import {
   createUser,
   deactivateUser,
   getSelfProfile,
+  listRecipients,
   listUsers,
+  revokeSelfSessions,
   updateSelfProfile,
   updateUser,
 } from '../services/users.service'
@@ -126,6 +128,34 @@ router.post(
         body.newPassword
       )
       res.status(204).send()
+    } catch (error) {
+      sendErrorResponse(res, error)
+    }
+  }
+)
+
+router.post(
+  '/me/sessions/revoke',
+  requireRole(ALL_AUTHENTICATED_ROLES),
+  async (req: Request, res) => {
+    try {
+      await revokeSelfSessions(req.user!.id)
+      res.status(204).send()
+    } catch (error) {
+      sendErrorResponse(res, error)
+    }
+  }
+)
+
+// -- Recipients lookup (BR-12: any authenticated role) ---------------------
+
+router.get(
+  '/recipients',
+  requireRole(ALL_AUTHENTICATED_ROLES),
+  async (_req: Request, res) => {
+    try {
+      const recipients = await listRecipients()
+      res.status(200).json({ data: recipients })
     } catch (error) {
       sendErrorResponse(res, error)
     }
