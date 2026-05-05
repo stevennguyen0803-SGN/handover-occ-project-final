@@ -17,6 +17,8 @@ export interface ShortcutMap {
   onToggleTheme?: () => void;
   /** ? → open the shortcut help modal */
   onHelp?: () => void;
+  /** Cmd+K / Ctrl+K → open the command palette */
+  onPalette?: () => void;
   /** Esc → close modal / blur search */
   onEscape?: () => void;
 }
@@ -34,6 +36,15 @@ export function useKeyboardShortcuts(map: ShortcutMap): void {
 
       if (event.key === 'Escape') {
         map.onEscape?.();
+        return;
+      }
+      // Cmd+K / Ctrl+K is intentionally allowed inside editable
+      // elements so users can summon the palette from a search input.
+      if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
+        if (map.onPalette) {
+          event.preventDefault();
+          map.onPalette();
+        }
         return;
       }
       if (inEditable) return;
