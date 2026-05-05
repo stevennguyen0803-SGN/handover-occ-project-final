@@ -68,19 +68,33 @@ frontend-stubs/
 │   │   ├── ReportFilters.tsx       ← date range, shift, priority, category
 │   │   ├── ReportPreview.tsx       ← print-ready dataset (`@media print` aware)
 │   │   └── ExportButton.tsx        ← CSV via API, browser print pipe
+│   ├── auth/                       ← NextAuth.js v5 (Auth.js) wiring
+│   │   ├── SignInLayout.tsx        ← branded auth shell
+│   │   ├── SignInForm.tsx          ← credentials form (email + password)
+│   │   ├── UserMenu.tsx            ← avatar dropdown + sign out (TopBar drop-in)
+│   │   ├── RoleSwitcher.tsx        ← dev-only role switcher (gated to non-prod)
+│   │   └── UnauthorizedView.tsx    ← 403 page (rendered by /forbidden)
 │   └── wizard/
 │       ├── HandoverWizard.tsx      ← 3-step orchestrator
 │       ├── WizardStepper.tsx
 │       ├── StepHeader.tsx
 │       ├── StepCategories.tsx
 │       └── StepReview.tsx
+├── auth.config.example.ts          ← Edge-safe NextAuth.js v5 config
+├── auth.example.ts                 ← Full Auth.js wiring + Prisma adapter
+├── middleware.example.ts           ← Route guard middleware (uses authConfig)
+├── next-auth.d.ts                  ← Module augmentation (role on Session/JWT)
 └── examples/
     ├── dashboard/page.tsx
     ├── log/page.tsx
     ├── handover/page.tsx           ← detail
     ├── handover-new/page.tsx       ← wizard
-    ├── admin/page.tsx               ← ADMIN users console
-    └── reports/page.tsx             ← Reports & Export
+    ├── admin/page.tsx              ← ADMIN users console
+    ├── reports/page.tsx            ← Reports & Export
+    └── auth/
+        ├── route.example.ts        ← `app/api/auth/[...nextauth]/route.ts`
+        ├── signin/page.tsx         ← `app/(auth)/signin/page.tsx`
+        └── forbidden/page.tsx      ← `app/forbidden/page.tsx`
 ```
 
 ---
@@ -139,6 +153,9 @@ The four files in `examples/` correspond directly to App Router routes:
 | `examples/handover-new/page.tsx`  | `app/(app)/handover/new/page.tsx`             |
 | `examples/admin/page.tsx`         | `app/(admin)/users/page.tsx`                  |
 | `examples/reports/page.tsx`       | `app/(app)/reports/page.tsx`                  |
+| `examples/auth/signin/page.tsx`   | `app/(auth)/signin/page.tsx`                  |
+| `examples/auth/forbidden/page.tsx`| `app/forbidden/page.tsx`                      |
+| `examples/auth/route.example.ts`  | `app/api/auth/[...nextauth]/route.ts`         |
 
 > Gate `app/(admin)/**` in your `middleware.ts` (or a layout-level
 > auth guard) by checking `can(currentUser.role, 'manageUsers')` —
@@ -238,13 +255,98 @@ detail page. The example page (`examples/reports/page.tsx`) demonstrates:
 
 ---
 
+## NextAuth.js v5 (Auth.js) wiring
+
+Tech-stack baseline (`AGENTS.md`) is **NextAuth.js v5** — the
+modernised package name is `next-auth@5.x`, marketed as "Auth.js". The
+stubs target this version, **not** v4.
+
+### Files
+
+| Stub                                | Place at                                |
+| ----------------------------------- | --------------------------------------- |
+| `auth.config.example.ts`            | `auth.config.ts` (project root)         |
+| `auth.example.ts`                   | `auth.ts` (project root)                |
+| `middleware.example.ts`             | `middleware.ts` (project root)          |
+| `next-auth.d.ts`                    | `next-auth.d.ts` (project root)         |
+| `examples/auth/route.example.ts`    | `app/api/auth/[...nextauth]/route.ts`   |
+| `examples/auth/signin/page.tsx`     | `app/(auth)/signin/page.tsx`            |
+| `examples/auth/forbidden/page.tsx`  | `app/forbidden/page.tsx`                |
+
+### Why two config files?
+
+`auth.config.ts` is **Edge-safe** — Next.js middleware runs on the Edge
+runtime, which doesn't allow Node-only packages (`bcryptjs`,
+`@prisma/client`). So we keep providers / adapter wiring in `auth.ts`
+(Node) and only the JWT/session callbacks + route matrix in
+`auth.config.ts` (Edge). The middleware imports the Edge-safe one.
+
+This is the official Auth.js v5 split — see
+<https://authjs.dev/getting-started/installation>.
+
+### Required env
+
+```dotenv
+AUTH_SECRET=...           # openssl rand -base64 32
+DATABASE_URL=...          # PostgreSQL — same as backend
+```
+
+### Module augmentation
+
+`next-auth.d.ts` extends `Session.user` with `id` and `role` so
+TypeScript-strict code can do:
+
+```ts
+const session = await auth();
+if (session?.user.role === 'ADMIN') { … }
+```
+
+### Server-side guards
+
+For Server Components / route handlers, prefer the helpers in
+`lib/auth-helpers.ts`:
+
+```ts
+// app/(admin)/users/page.tsx
+import { auth } from '@/auth';
+import { requireCapability } from '@/lib/auth-helpers';
+
+export default async function Page() {
+  const user = await requireCapability(() => auth(), 'manageUsers');
+  // ↑ throws a NEXT_REDIRECT to /forbidden if user lacks the capability
+  return <UsersClient currentUser={user} />;
+}
+```
+
+For client-only contexts (banners, hint-rendering), keep using
+`can(role, capability)` from `lib/permissions.ts`.
+
+### Dev-only role switcher
+
+`<RoleSwitcher>` lets you impersonate a role in development to test
+gating without bouncing through Auth.js. It's gated to
+`process.env.NODE_ENV !== 'production'` and **only flips the local UI
+state** — the real `auth()` session is unchanged, so server-side
+checks remain accurate.
+
+### What this isn't
+
+- **Not a credentials backend.** `auth.example.ts` calls Prisma
+  directly; if you'd rather hit your Express `/api/v1/auth/login`,
+  swap the `authorize()` body to `fetch()` against your API and drop
+  the `PrismaAdapter`.
+- **Not OAuth.** Add providers in `auth.example.ts` once you decide on
+  the IdP (Microsoft, Google, etc.).
+- **Not a forgot-password flow.** The link is rendered but
+  `app/forgot-password/page.tsx` is up to you.
+
+---
+
 ## What's intentionally NOT included
 
 - **No data fetching layer.** Use whatever you already have (server
   components calling `fetch`, React Query, SWR, …). The example pages
   show the seam.
-- **No auth wiring.** NextAuth.js v5 already lives in your project; pull
-  the user from `auth()` and pass to `<AppShell user={…}>`.
 - **No charting library.** The prototype uses Chart.js via a CDN — for a
   TypeScript-strict app, install `chart.js` + `react-chartjs-2` (or
   `recharts`) and feed it `summary.byCategory` / `summary.byPriority` /
