@@ -22,6 +22,10 @@ type DashboardAggregateRow = TodayItemMetricsRow & HandoverDashboardCountsRow & 
   unresolvedByCategoryRows: unknown
   shiftComparisonRows: unknown
   openByCategoryRows: unknown
+  byPriorityRows: unknown
+  byShiftRows: unknown
+  abnormalEventsByTypeRows: unknown
+  flightsAffected: number | bigint
   overdueItems: number | bigint
   itemsDueInNext2Hours: number | bigint
 }
@@ -54,6 +58,21 @@ type ShiftComparisonPayloadRow = {
 type OpenByCategoryPayloadRow = {
   category: string
   openCount: number | bigint
+}
+
+type PriorityCountRow = {
+  priority: Priority | string
+  count: number | bigint
+}
+
+type ShiftCountRow = {
+  shift: Shift | string
+  count: number | bigint
+}
+
+type AbnormalEventTypeCountRow = {
+  eventType: string
+  count: number | bigint
 }
 
 const ITEM_TABLE_CONFIG = [
@@ -365,7 +384,104 @@ async function getDashboardAggregates(
           WHERE items."handoverDate" = ${today}
           GROUP BY items.category
         ) open_category
-      ), '[]'::jsonb) AS "openByCategoryRows"
+      ), '[]'::jsonb) AS "openByCategoryRows",
+      COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'priority', priority_counts.priority,
+            'count', priority_counts.count
+          )
+          ORDER BY priority_counts.priority
+        )
+        FROM (
+          SELECT
+            h."overallPriority"::text AS priority,
+            COUNT(*)::int AS count
+          FROM "Handover" h
+          WHERE h."deletedAt" IS NULL
+            AND h."handoverDate" = ${today}
+            ${handoverUserScope}
+          GROUP BY h."overallPriority"
+        ) priority_counts
+      ), '[]'::jsonb) AS "byPriorityRows",
+      COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'shift', shift_counts.shift,
+            'count', shift_counts.count
+          )
+          ORDER BY shift_counts.shift
+        )
+        FROM (
+          SELECT
+            h.shift::text AS shift,
+            COUNT(*)::int AS count
+          FROM "Handover" h
+          WHERE h."deletedAt" IS NULL
+            AND h."handoverDate" = ${today}
+            ${handoverUserScope}
+          GROUP BY h.shift
+        ) shift_counts
+      ), '[]'::jsonb) AS "byShiftRows",
+      COALESCE((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'eventType', abnormal_counts."eventType",
+            'count', abnormal_counts.count
+          )
+          ORDER BY abnormal_counts."eventType"
+        )
+        FROM (
+          SELECT
+            ae."eventType" AS "eventType",
+            COUNT(*)::int AS count
+          FROM "AbnormalEvent" ae
+          INNER JOIN "Handover" h ON h.id = ae."handoverId"
+          WHERE ae."deletedAt" IS NULL
+            AND h."deletedAt" IS NULL
+            AND h."handoverDate" = ${today}
+            AND ae.status IN (
+              ${sqlItemStatus(ItemStatus.Open)},
+              ${sqlItemStatus(ItemStatus.Monitoring)}
+            )
+            ${handoverUserScope}
+          GROUP BY ae."eventType"
+        ) abnormal_counts
+      ), '[]'::jsonb) AS "abnormalEventsByTypeRows",
+      (
+        SELECT COUNT(DISTINCT TRIM(flights.flight_number))::int
+        FROM (
+          SELECT fsi."flightNumber" AS flight_number
+          FROM "FlightScheduleItem" fsi
+          INNER JOIN "Handover" h ON h.id = fsi."handoverId"
+          WHERE fsi."deletedAt" IS NULL
+            AND h."deletedAt" IS NULL
+            AND h."handoverDate" = ${today}
+            AND fsi.status IN (
+              ${sqlItemStatus(ItemStatus.Open)},
+              ${sqlItemStatus(ItemStatus.Monitoring)}
+            )
+            AND fsi."flightNumber" IS NOT NULL
+            AND TRIM(fsi."flightNumber") <> ''
+            ${handoverUserScope}
+          UNION
+          SELECT f.flight_number
+          FROM "AbnormalEvent" ae
+          INNER JOIN "Handover" h ON h.id = ae."handoverId"
+          CROSS JOIN LATERAL UNNEST(
+            string_to_array(COALESCE(ae."flightsAffected", ''), ',')
+          ) AS f(flight_number)
+          WHERE ae."deletedAt" IS NULL
+            AND h."deletedAt" IS NULL
+            AND h."handoverDate" = ${today}
+            AND ae.status IN (
+              ${sqlItemStatus(ItemStatus.Open)},
+              ${sqlItemStatus(ItemStatus.Monitoring)}
+            )
+            AND TRIM(f.flight_number) <> ''
+            ${handoverUserScope}
+        ) flights
+      ) AS "flightsAffected"
     FROM items
   `)
 
@@ -435,6 +551,43 @@ async function getDashboardAggregates(
     ])
   ) as Record<DashboardCategoryKey, number>
 
+  const byPriorityRows = toJsonArray<PriorityCountRow>(row?.byPriorityRows)
+  const byPriority: Record<Priority, number> = {
+    [Priority.Low]: 0,
+    [Priority.Normal]: 0,
+    [Priority.High]: 0,
+    [Priority.Critical]: 0,
+  }
+  byPriorityRows.forEach((entry) => {
+    const key = entry.priority as Priority
+    if (key in byPriority) {
+      byPriority[key] = toCount(entry.count)
+    }
+  })
+
+  const byShiftRows = toJsonArray<ShiftCountRow>(row?.byShiftRows)
+  const byShift: Record<Shift, number> = {
+    [Shift.Morning]: 0,
+    [Shift.Afternoon]: 0,
+    [Shift.Night]: 0,
+  }
+  byShiftRows.forEach((entry) => {
+    const key = entry.shift as Shift
+    if (key in byShift) {
+      byShift[key] = toCount(entry.count)
+    }
+  })
+
+  const abnormalEventsByTypeRows = toJsonArray<AbnormalEventTypeCountRow>(
+    row?.abnormalEventsByTypeRows
+  )
+  const abnormalEventsByType: Record<string, number> = {}
+  abnormalEventsByTypeRows.forEach((entry) => {
+    if (entry.eventType) {
+      abnormalEventsByType[entry.eventType] = toCount(entry.count)
+    }
+  })
+
   return {
     handoverCounts: {
       totalHandovers: toCount(row?.totalHandovers),
@@ -446,6 +599,10 @@ async function getDashboardAggregates(
       monitoringItems: toCount(row?.monitoringItems),
       resolvedItems: toCount(row?.resolvedItems),
       criticalItems: toCount(row?.criticalItems),
+      flightsAffected: toCount(row?.flightsAffected),
+      byPriority,
+      byShift,
+      abnormalEventsByType,
     },
     trend7Days: Array.from({ length: 7 }, (_, index) => {
       const date = addUtcDays(startDate, index)
@@ -527,6 +684,19 @@ function createEmptyItemAggregates(startDate: Date) {
       monitoringItems: 0,
       resolvedItems: 0,
       criticalItems: 0,
+      flightsAffected: 0,
+      byPriority: {
+        [Priority.Low]: 0,
+        [Priority.Normal]: 0,
+        [Priority.High]: 0,
+        [Priority.Critical]: 0,
+      },
+      byShift: {
+        [Shift.Morning]: 0,
+        [Shift.Afternoon]: 0,
+        [Shift.Night]: 0,
+      },
+      abnormalEventsByType: {} as Record<string, number>,
     },
     trend7Days: buildEmpty7DaySeries(startDate, (date) => ({
       date,
@@ -591,6 +761,10 @@ export async function getDashboardSummary(
       criticalItems: itemAggregates.todayMetrics.criticalItems,
       unacknowledgedHighPriority:
         itemAggregates.handoverCounts.unacknowledgedHighPriority,
+      flightsAffected: itemAggregates.todayMetrics.flightsAffected,
+      byPriority: itemAggregates.todayMetrics.byPriority,
+      byShift: itemAggregates.todayMetrics.byShift,
+      abnormalEventsByType: itemAggregates.todayMetrics.abnormalEventsByType,
     },
     trend7Days: itemAggregates.trend7Days,
     priorityHeatmap7Days: itemAggregates.priorityHeatmap7Days,

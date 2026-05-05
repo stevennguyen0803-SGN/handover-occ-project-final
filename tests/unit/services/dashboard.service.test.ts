@@ -105,6 +105,21 @@ describe('dashboard.service', () => {
             { category: 'weather', openCount: 1 },
             { category: 'system', openCount: 1 },
           ],
+          byPriorityRows: [
+            { priority: 'Normal', count: 1 },
+            { priority: 'High', count: 1 },
+            { priority: 'Critical', count: 1 },
+          ],
+          byShiftRows: [
+            { shift: 'Morning', count: 1 },
+            { shift: 'Afternoon', count: 1 },
+            { shift: 'Night', count: 1 },
+          ],
+          abnormalEventsByTypeRows: [
+            { eventType: 'AOG', count: 2 },
+            { eventType: 'Diversion', count: 1 },
+          ],
+          flightsAffected: 7,
           overdueItems: 2,
           itemsDueInNext2Hours: 4,
         },
@@ -123,6 +138,10 @@ describe('dashboard.service', () => {
         resolvedItems: 8,
         criticalItems: 2,
         unacknowledgedHighPriority: 1,
+        flightsAffected: 7,
+        byPriority: { Low: 0, Normal: 1, High: 1, Critical: 1 },
+        byShift: { Morning: 1, Afternoon: 1, Night: 1 },
+        abnormalEventsByType: { AOG: 2, Diversion: 1 },
       },
       trend7Days: [
         { date: '2026-04-17', open: 5, resolved: 3 },
@@ -227,6 +246,10 @@ describe('dashboard.service', () => {
           unresolvedByCategoryRows: [],
           shiftComparisonRows: [],
           openByCategoryRows: [],
+          byPriorityRows: [],
+          byShiftRows: [],
+          abnormalEventsByTypeRows: [],
+          flightsAffected: 0,
           overdueItems: 0,
           itemsDueInNext2Hours: 0,
         },
@@ -241,5 +264,79 @@ describe('dashboard.service', () => {
     }
 
     expect(aggregateQuery.values).toContain(occUser.id)
+  })
+
+  it('zero-fills today.byPriority/byShift/abnormalEventsByType when the DB returns empty arrays', async () => {
+    prismaMock.$queryRaw.mockResolvedValueOnce([
+      {
+        totalHandovers: 0,
+        unacknowledgedHighPriority: 0,
+        carriedForwardCount: 0,
+        openItems: 0,
+        monitoringItems: 0,
+        resolvedItems: 0,
+        criticalItems: 0,
+        trendRows: [],
+        priorityHeatmapRows: [],
+        unresolvedByCategoryRows: [],
+        shiftComparisonRows: [],
+        openByCategoryRows: [],
+        byPriorityRows: [],
+        byShiftRows: [],
+        abnormalEventsByTypeRows: [],
+        flightsAffected: 0,
+        overdueItems: 0,
+        itemsDueInNext2Hours: 0,
+      },
+    ])
+
+    const summary = await getDashboardSummary(
+      createUser(UserRole.SUPERVISOR),
+      new Date('2026-04-23T10:15:00.000Z')
+    )
+
+    expect(summary.today).toEqual({
+      totalHandovers: 0,
+      openItems: 0,
+      monitoringItems: 0,
+      resolvedItems: 0,
+      criticalItems: 0,
+      unacknowledgedHighPriority: 0,
+      flightsAffected: 0,
+      byPriority: { Low: 0, Normal: 0, High: 0, Critical: 0 },
+      byShift: { Morning: 0, Afternoon: 0, Night: 0 },
+      abnormalEventsByType: {},
+    })
+  })
+
+  it('falls back to fully zeroed today metrics when the aggregate query returns no rows', async () => {
+    prismaMock.$queryRaw.mockResolvedValueOnce([])
+
+    const summary = await getDashboardSummary(
+      createUser(UserRole.MANAGEMENT_VIEWER),
+      new Date('2026-04-23T10:15:00.000Z')
+    )
+
+    expect(summary.today).toEqual({
+      totalHandovers: 0,
+      openItems: 0,
+      monitoringItems: 0,
+      resolvedItems: 0,
+      criticalItems: 0,
+      unacknowledgedHighPriority: 0,
+      flightsAffected: 0,
+      byPriority: { Low: 0, Normal: 0, High: 0, Critical: 0 },
+      byShift: { Morning: 0, Afternoon: 0, Night: 0 },
+      abnormalEventsByType: {},
+    })
+    expect(summary.openByCategory).toEqual({
+      aircraft: 0,
+      airport: 0,
+      flightSchedule: 0,
+      crew: 0,
+      weather: 0,
+      system: 0,
+      abnormalEvents: 0,
+    })
   })
 })
