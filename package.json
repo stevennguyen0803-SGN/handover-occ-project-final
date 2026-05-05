@@ -9,8 +9,10 @@
     "build:frontend": "npm --prefix frontend run build",
     "start": "node backend/dist/server.js",
     "start:frontend": "npm --prefix frontend run start",
-    "test": "node ./scripts/run-node-with-root-env.mjs ./node_modules/vitest/vitest.mjs --run --configLoader runner --pool threads --passWithNoTests && npm --prefix backend run test",
+    "test": "node ./scripts/run-node-with-root-env.mjs ./node_modules/vitest/vitest.mjs --run --configLoader runner --pool threads --passWithNoTests --config vitest.config.mts && npm --prefix backend run test",
     "test:smoke": "node ./scripts/run-node-with-root-env.mjs ./node_modules/vitest/vitest.mjs --run --configLoader runner --pool threads --config vitest.smoke.config.mts",
+    "test:e2e": "node ./scripts/run-node-with-root-env.mjs ./node_modules/@playwright/test/cli.js test",
+    "test:e2e:install": "playwright install --with-deps chromium",
     "test:coverage": "node ./scripts/run-node-with-root-env.mjs ./node_modules/vitest/vitest.mjs --run --configLoader runner --pool threads --coverage --passWithNoTests && npm --prefix backend run test:coverage",
     "typecheck": "npm --prefix backend run build -- --noEmit && npm --prefix frontend run typecheck",
     "typecheck:backend": "npm --prefix backend run build -- --noEmit",
@@ -30,6 +32,7 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "typescript": "^5.9.3",

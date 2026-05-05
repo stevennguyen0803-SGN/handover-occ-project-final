@@ -20,6 +20,21 @@ const DEFAULT_PREFERENCES: PreferenceState = {
   defaultShift: '',
 }
 
+type ChangePasswordCode =
+  | 'wrongCurrent'
+  | 'tooShort'
+  | 'sameAsCurrent'
+  | undefined
+
+function mapPasswordError(payload: unknown): ChangePasswordCode {
+  if (!payload || typeof payload !== 'object') return undefined
+  const code = (payload as { error?: unknown }).error
+  if (code === 'WRONG_CURRENT') return 'wrongCurrent'
+  if (code === 'SAME_AS_CURRENT') return 'sameAsCurrent'
+  if (code === 'VALIDATION_FAILED') return 'tooShort'
+  return undefined
+}
+
 export default function SettingsPage() {
   const [profile, setProfile] = useState<SelfProfile | null>(null)
   const [prefs] = useState<PreferenceState>(DEFAULT_PREFERENCES)
@@ -27,8 +42,8 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false
     fetch('/api/v1/users/me', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: SelfProfile | null) => {
+      .then(async (res) => (res.ok ? ((await res.json()) as SelfProfile) : null))
+      .then((data) => {
         if (!cancelled && data) setProfile(data)
       })
       .catch(() => undefined)
@@ -40,23 +55,33 @@ export default function SettingsPage() {
   const updateProfile = async (
     patch: ProfileUpdateInput
   ): Promise<SelfProfile> => {
-    if (!profile) throw new Error('Profile not loaded')
-    const next: SelfProfile = {
-      ...profile,
-      ...patch,
-      updatedAt: new Date().toISOString(),
+    const res = await fetch('/api/v1/users/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) {
+      throw new Error('Failed to update profile')
     }
+    const next = (await res.json()) as SelfProfile
     setProfile(next)
     return next
   }
 
   const changePassword = async (
-    _input: ChangePasswordInput
-  ): Promise<'wrongCurrent' | 'tooShort' | 'sameAsCurrent' | undefined> => {
-    return undefined
+    input: ChangePasswordInput
+  ): Promise<ChangePasswordCode> => {
+    const res = await fetch('/api/v1/users/me/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (res.ok) return undefined
+    const payload = await res.json().catch(() => null)
+    const mapped = mapPasswordError(payload)
+    if (mapped) return mapped
+    throw new Error('Failed to change password')
   }
-
-  const signOutAllSessions = async (): Promise<void> => undefined
 
   const savePreferences = (_next: PreferenceState): void => undefined
 
@@ -88,12 +113,7 @@ export default function SettingsPage() {
             />
           )
         }
-        return (
-          <SecuritySection
-            onChangePassword={changePassword}
-            onSignOutAllSessions={signOutAllSessions}
-          />
-        )
+        return <SecuritySection onChangePassword={changePassword} />
       }}
     </SettingsLayout>
   )

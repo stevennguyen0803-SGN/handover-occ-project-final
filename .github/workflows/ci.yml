@@ -52,3 +52,111 @@ jobs:
           DATABASE_URL: postgresql://localhost:5432/ci
           DIRECT_URL: postgresql://localhost:5432/ci
         run: npm run build:frontend
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: build
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: occ_handover
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    env:
+      # NODE_ENV is intentionally NOT set at the job level: setting it to
+      # `production` causes `npm ci` to skip devDependencies (e.g. typescript,
+      # tsx, vitest) which the build / seed scripts require. The Playwright
+      # `webServer` blocks set NODE_ENV=production per server when launching
+      # the prebuilt apps.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/occ_handover
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/occ_handover
+      NEXTAUTH_SECRET: ci-e2e-secret
+      AUTH_SECRET: ci-e2e-secret
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
+      BACKEND_URL: http://localhost:4000
+      BCRYPT_ROUNDS: '4'
+      LOG_LEVEL: warn
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Prepare CI environment file
+        run: |
+          cp .env.example .env
+          {
+            echo "DATABASE_URL=${DATABASE_URL}"
+            echo "DIRECT_URL=${DIRECT_URL}"
+            echo "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}"
+            echo "AUTH_SECRET=${AUTH_SECRET}"
+            echo "NEXTAUTH_URL=${NEXTAUTH_URL}"
+            echo "AUTH_TRUST_HOST=${AUTH_TRUST_HOST}"
+            echo "BACKEND_URL=${BACKEND_URL}"
+            echo "BCRYPT_ROUNDS=${BCRYPT_ROUNDS}"
+            echo "LOG_LEVEL=${LOG_LEVEL}"
+          } >> .env
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Apply Prisma migrations
+        run: npm run db:migrate:deploy
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Build backend
+        run: npm run build:backend
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+
+      - name: Upload Playwright traces
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7
