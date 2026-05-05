@@ -7,7 +7,7 @@
 | --- | --- | --- | --- |
 | Phase 1: Business Alignment and Design | Done | 100% | 2026-04-21 |
 | Phase 2: MVP Build (backend) | Done | 100% | 2026-04-23 |
-| Phase 2: MVP Build (frontend) | Not Started — never landed in repo | 0% | TBD |
+| Phase 2: MVP Build (frontend) | In progress — Next.js scaffold landed 2026-05-05 | 35% | TBD |
 | Phase 3: Workflow Enhancement (backend) | Done | 100% | 2026-04-23 |
 | Phase 4: Pilot Deployment and UAT | Reset by 2026-05-05 backend-only refactor | — | TBD |
 | Phase 5: Production Rollout | Not Started | 0% | TBD |
@@ -15,6 +15,15 @@
 > **2026-05-05 status correction.** The previous "Phase 2 frontend / Phase 4 staging" rows in this log claimed deliverables that lived only in `frontend-stubs/` (design stubs) or referenced files that were never committed (the `frontend/` directory was empty, the staging Docker stack and `verify:staging:local` path are gone). Earlier "Completed" entries below are kept for historical reference but should not be read as production milestones.
 
 ## Completed
+
+### 2026-05-05 — Frontend bootstrap (Next.js 14 + NextAuth.js v5)
+- **2026-05-05**: Bootstrapped a real Next.js 14 (App Router) app under `frontend/` — `package.json`, `tsconfig.json`, `next.config.mjs`, `postcss.config.mjs`, `tailwind.config.ts`, `.eslintrc.json`, `.gitignore`, `.env.example`. Tailwind config + `app/globals.css` carry over the priority/status/shift design tokens from `frontend-stubs/`.
+- **2026-05-05**: Wired NextAuth.js v5 — Edge-safe `auth.config.ts` (PUBLIC_ROUTES, ROUTE_ROLES matrix, `authorized` callback that redirects unauthorized roles to `/forbidden`, JWT session callbacks), full `auth.ts` (Prisma adapter + Credentials provider that bcrypt-compares against `User.passwordHash` and rejects inactive users), `middleware.ts`, and the route handler at `app/api/auth/[...nextauth]/route.ts`. The `next-auth.d.ts` module augmentation extends `Session.user` and the JWT with `role: UserRole`.
+- **2026-05-05**: Copied components/hooks/lib from `frontend-stubs/` into `frontend/` and added a `'use client'` directive to `components/auth/UnauthorizedView.tsx` (the only stub component that uses a client hook without it). Added an `(auth)` route-group layout that wraps signin/forbidden in `<I18nProvider>`, and an `(app)` route-group layout that gates auth via `auth()` and wraps children in `<I18nProvider>` + `<ToastProvider>` + `<AppShell>`.
+- **2026-05-05**: Built `lib/server/api-client.ts` — a server-only fetch wrapper that derives the current `BackendAuthUser` from `auth()`, calls `createBackendAuthHeaders()` (mirror of `backend/src/lib/auth-bridge.ts`), and throws `BackendApiError` on non-2xx responses. `BACKEND_URL` env var (default `http://localhost:4000`) targets the Express API.
+- **2026-05-05**: Wired core pages — `app/page.tsx` (root → /dashboard or /signin), `(auth)/signin` (Suspense-wrapped client form that calls `signIn('credentials', { redirect: false })`), `(auth)/forbidden`, `(app)/dashboard` (server fetch of `/api/v1/dashboard/today` + `/api/v1/handovers?limit=10`), `(app)/log` (server fetch + client filters), `(app)/handover/[id]` (server fetch detail), `(app)/handover/new` (client wizard posting to `/api/v1/handovers`), `(app)/reports`, `(app)/admin/users` (ADMIN-gated server fetch + client CRUD UI), `(app)/settings` (per-user profile/preferences/security panels).
+- **2026-05-05**: Updated root `package.json` with `dev:frontend`, `build:frontend`, `typecheck:frontend`, `lint:frontend`, and combined `build` + `typecheck` scripts that run both backend and frontend. Updated `.github/workflows/ci.yml` to also `npm --prefix frontend ci`, run frontend typecheck, and build the Next.js app with placeholder env vars.
+- **2026-05-05**: Verified locally — `npx tsc --noEmit` (frontend strict, 0 errors) and `npx next build` both succeed. 12 routes built (`/`, `/_not-found`, `/admin/users`, `/api/auth/[...nextauth]`, `/dashboard`, `/forbidden`, `/handover/[id]`, `/handover/new`, `/log`, `/reports`, `/settings`, `/signin`).
 
 ### 2026-05-05 — Backend-only refactor
 - **2026-05-05**: Refactored repo to a backend-only posture. Removed empty `frontend/`, legacy `prototype/`, committed build artifacts `backend/tempdist/`, staging Docker (`Dockerfile`, `.dockerignore`, `infrastructure/staging/`), and staging orchestration scripts (`start-staging.mjs`, `verify-local-staging.mjs`, `verify-uat-scenarios.mjs`, `perf-check.mjs`, `sync-frontend-prisma-client.mjs`).
