@@ -59,6 +59,15 @@ frontend-stubs/
 │   │   ├── AcknowledgeButton.tsx   ← BR-10
 │   │   ├── AuditTrail.tsx          ← BR-09
 │   │   └── CarryForwardLink.tsx    ← BR-07
+│   ├── admin/                      ← ADMIN-only console (BR-12)
+│   │   ├── UsersTable.tsx          ← list + activity counters
+│   │   ├── UserFilters.tsx         ← search + role chips + status select
+│   │   ├── UserFormDialog.tsx      ← create + edit (no `passwordHash` on client)
+│   │   └── UserDeactivateDialog.tsx← confirm soft-delete (`isActive=false`)
+│   ├── reports/                    ← Reports & Export
+│   │   ├── ReportFilters.tsx       ← date range, shift, priority, category
+│   │   ├── ReportPreview.tsx       ← print-ready dataset (`@media print` aware)
+│   │   └── ExportButton.tsx        ← CSV via API, browser print pipe
 │   └── wizard/
 │       ├── HandoverWizard.tsx      ← 3-step orchestrator
 │       ├── WizardStepper.tsx
@@ -69,7 +78,9 @@ frontend-stubs/
     ├── dashboard/page.tsx
     ├── log/page.tsx
     ├── handover/page.tsx           ← detail
-    └── handover-new/page.tsx       ← wizard
+    ├── handover-new/page.tsx       ← wizard
+    ├── admin/page.tsx               ← ADMIN users console
+    └── reports/page.tsx             ← Reports & Export
 ```
 
 ---
@@ -126,6 +137,13 @@ The four files in `examples/` correspond directly to App Router routes:
 | `examples/log/page.tsx`           | `app/(app)/log/page.tsx`                      |
 | `examples/handover/page.tsx`      | `app/(app)/handover/[id]/page.tsx`            |
 | `examples/handover-new/page.tsx`  | `app/(app)/handover/new/page.tsx`             |
+| `examples/admin/page.tsx`         | `app/(admin)/users/page.tsx`                  |
+| `examples/reports/page.tsx`       | `app/(app)/reports/page.tsx`                  |
+
+> Gate `app/(admin)/**` in your `middleware.ts` (or a layout-level
+> auth guard) by checking `can(currentUser.role, 'manageUsers')` —
+> the page itself defends in depth but server-side enforcement is the
+> real gate (BR-12).
 
 Each page has a comment block at the top showing exactly what to swap out
 for real data fetching.
@@ -148,6 +166,55 @@ for real data fetching.
 | Keyboard shortcuts (N / D / L / A / T / / / ? )     | `useKeyboardShortcuts(map)`                         |
 | Audit trail                                         | `<AuditTrail entries={…}>`                          |
 | Acknowledge with toast                              | `<AcknowledgeButton acknowledge={…}>` + `useToast`  |
+| Admin user CRUD                                     | `<UsersTable>` + `<UserFormDialog>` + `<UserDeactivateDialog>` |
+| Soft-delete user (BR-12, no hard delete)            | `<UserDeactivateDialog>` → `PATCH /api/v1/users/:id { isActive: false }` |
+| Filtered reports + export                           | `<ReportFilters>` + `<ReportPreview>` + `<ExportButton>` |
+| Print preview (CSS-driven)                          | `@media print` rules in `styles.global.example.css` + `print:hidden` |
+
+---
+
+## Admin Users page (BR-12 / ADMIN only)
+
+Backed by `GET|POST /api/v1/users`, `PATCH /api/v1/users/:id`, and
+`DELETE /api/v1/users/:id` (the DELETE endpoint sets `isActive=false`
+— never hard-delete). The example page (`examples/admin/page.tsx`)
+demonstrates:
+
+- **List** with role chips, status select, full-text search.
+- **Activity counters** (`handoversPreparedCount`, `handoversReceivedCount`)
+  if your list endpoint returns them; the column is hidden otherwise.
+- **Create / edit** via `<UserFormDialog>`. The dialog never asks for or
+  echoes `passwordHash` — a fresh `password` field is sent to the server,
+  which hashes it. Leaving it blank keeps the existing hash (or remains
+  `null` for SSO-only users, per `shared/DATA_MODEL.md`).
+- **Soft-delete** (`isActive=false`) via `<UserDeactivateDialog>`, which
+  doubles as the reactivate dialog when the user is already inactive.
+- **Permission guard** — `can(role, 'manageUsers')` returns true only for
+  `ADMIN`, matching `shared/roles.md` and BR-12.
+
+## Reports & Export page
+
+Backed by `GET /api/v1/handovers/export/csv` (filtered list export) and,
+for per-handover PDF, `GET /api/v1/handovers/:id/export/pdf` from the
+detail page. The example page (`examples/reports/page.tsx`) demonstrates:
+
+- **Filter form** — date range, shift, priority, category, and a couple
+  of toggles. Round-trip to URL search params for shareable reports.
+- **Preview** — `<ReportPreview>` renders a print-ready summary card +
+  totals breakdown + flat handover table, all wrapped in
+  `<div className="print-region">`.
+- **Export** — `<ExportButton>` calls your `exportTo(format, filters)`
+  callback; the easiest implementation is
+  `window.location.href = '/api/v1/handovers/export/csv?…'` so the
+  browser handles the download via `Content-Disposition`.
+- **Print** — `window.print()` triggers the `@media print` rules in
+  `styles.global.example.css`, which hide chrome (sidebar, top bar,
+  toasts, FAB) and force the report to a clean white-on-black layout.
+
+> ⚠️ **Per-handover PDF** lives on the **detail page**, not on Reports.
+> Add an `<ExportButton allowPdf onPrint />` near the
+> `<HandoverHeader>` and call `/api/v1/handovers/:id/export/pdf` from
+> there. Reports = filtered list (CSV); Detail = single handover (PDF).
 
 ---
 

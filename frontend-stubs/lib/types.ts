@@ -208,3 +208,93 @@ export type QuickFilter =
 export type ThemeMode = 'light' | 'dark';
 
 export type Locale = 'vi' | 'en';
+
+// ----------------------------------------------------------------------------
+// Admin · User management (BR-12 / shared/API_SPEC.md "Users (Admin only)")
+// ----------------------------------------------------------------------------
+
+/**
+ * Full user record returned by `GET /api/v1/users`.
+ *
+ * `passwordHash` is intentionally absent — the server never returns it to
+ * any client (BR-12 / `shared/DATA_MODEL.md`). Client code only ever sees
+ * the fields below.
+ */
+export interface UserDetail {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** Optional activity counters joined server-side; absent on lighter list endpoints. */
+  handoversPreparedCount?: number;
+  handoversReceivedCount?: number;
+  lastLoginAt?: string | null;
+}
+
+/** Payload for `POST /api/v1/users`. Server hashes the password. */
+export interface UserCreateInput {
+  email: string;
+  name: string;
+  role: UserRole;
+  /** Optional for SSO-only users (passwordHash is nullable in the schema). */
+  password?: string;
+}
+
+/** Payload for `PATCH /api/v1/users/:id` — only mutable fields are listed. */
+export interface UserUpdateInput {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  isActive?: boolean;
+  /** Optional admin-initiated reset (server hashes; passwordHash stays nullable for SSO). */
+  password?: string;
+}
+
+export interface UserFiltersValue {
+  search: string;
+  role: UserRole | 'All';
+  status: 'All' | 'Active' | 'Inactive';
+}
+
+// ----------------------------------------------------------------------------
+// Reports · Export
+// ----------------------------------------------------------------------------
+
+/** Format requested when exporting. PDF is per-handover (BR-14); CSV is list-level. */
+export type ExportFormat = 'pdf' | 'csv';
+
+/** Filters that drive `GET /api/v1/handovers` and `GET /api/v1/handovers/export/csv`. */
+export interface ReportFiltersValue {
+  /** ISO date `YYYY-MM-DD`. Inclusive on both sides. */
+  dateFrom: string | null;
+  dateTo: string | null;
+  shift: Shift | 'All';
+  priority: Priority | 'All';
+  category: CategoryCode | 'All';
+  preparedById?: string | null;
+  /** When true, only handovers that have items still Open or Monitoring. */
+  openOnly: boolean;
+  /** When true, only handovers `isCarriedForward = true`. */
+  carryForwardOnly: boolean;
+}
+
+/**
+ * Aggregate dataset rendered by the report preview before the user clicks
+ * "Export". Generated server-side by re-using `GET /api/v1/handovers` with
+ * the report filters applied.
+ */
+export interface ReportDataset {
+  filters: ReportFiltersValue;
+  generatedAt: string; // ISO datetime
+  totalHandovers: number;
+  rows: HandoverListRow[];
+  /** Optional aggregate counters for the cover page. */
+  totals?: {
+    byShift: Record<Shift, number>;
+    byPriority: Record<Priority, number>;
+    byStatus: Record<ItemStatus, number>;
+  };
+}
