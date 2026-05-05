@@ -298,3 +298,75 @@ export interface ReportDataset {
     byStatus: Record<ItemStatus, number>;
   };
 }
+
+// ----------------------------------------------------------------------------
+// Settings · self-service profile, preferences, security
+// ----------------------------------------------------------------------------
+
+/**
+ * Read-only "my profile" payload. Mirrors `UserDetail` minus admin-only
+ * counters. Source: `GET /api/v1/users/me` (recommended new endpoint) or
+ * `GET /api/v1/users/:id` with `id = session.user.id`.
+ *
+ * `passwordHash` is intentionally absent — the server never returns it.
+ */
+export interface SelfProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string | null;
+}
+
+/**
+ * Self-service profile update. Only `name` is generally editable by the
+ * user themselves; `email` and `role` typically require ADMIN
+ * (`<UserFormDialog>` from PR #3). The shape leaves both editable so a
+ * privileged self-edit screen can reuse the form, but the example page
+ * gates `email`/`role` behind a role check.
+ *
+ * Source: `PATCH /api/v1/users/me` (recommended) or
+ * `PATCH /api/v1/users/:id` with `id = session.user.id`.
+ */
+export interface ProfileUpdateInput {
+  name?: string;
+  email?: string;
+}
+
+/**
+ * Change-password payload. The server MUST require `currentPassword`
+ * before accepting `newPassword` (BR-12 self-service safety) and MUST
+ * hash with bcrypt before storing.
+ *
+ * Source: `POST /api/v1/users/me/password` (recommended new endpoint).
+ *
+ * NOTE: This endpoint is NOT yet documented in `shared/API_SPEC.md`.
+ * Add it before wiring the form to a real backend.
+ */
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** Visual density. Persists in cookie alongside the existing `useTheme` cookie. */
+export type Density = 'comfortable' | 'compact';
+
+/**
+ * Client-side preference state. None of these touch `User.*` columns;
+ * theme + locale + density live in cookies so SSR can render the
+ * correct surface on the first byte. Cookie names:
+ *   - `occ_theme`    → ThemeMode
+ *   - `occ_locale`   → Locale
+ *   - `occ_density`  → Density
+ *   - `occ_default_shift` → Shift | '' (empty means "current shift")
+ */
+export interface PreferenceState {
+  theme: ThemeMode | 'system';
+  locale: Locale;
+  density: Density;
+  /** Empty string ⇒ use the current real-time shift. */
+  defaultShift: Shift | '';
+}
