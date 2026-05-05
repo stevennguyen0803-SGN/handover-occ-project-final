@@ -74,6 +74,13 @@ frontend-stubs/
 │   │   ├── UserMenu.tsx            ← avatar dropdown + sign out (TopBar drop-in)
 │   │   ├── RoleSwitcher.tsx        ← dev-only role switcher (gated to non-prod)
 │   │   └── UnauthorizedView.tsx    ← 403 page (rendered by /forbidden)
+│   ├── settings/                   ← Settings page (self-service)
+│   │   ├── SettingsLayout.tsx      ← 2-col shell with hash routing
+│   │   ├── SettingsNav.tsx         ← sidebar nav (Profile/Preferences/Security)
+│   │   ├── ProfileSection.tsx      ← edit name (+ email/role for ADMIN)
+│   │   ├── PreferencesSection.tsx  ← theme + locale + density + default shift
+│   │   ├── SecuritySection.tsx     ← change password + sign-out-all-sessions
+│   │   └── PasswordStrengthMeter.tsx ← length + char-class scoring
 │   └── wizard/
 │       ├── HandoverWizard.tsx      ← 3-step orchestrator
 │       ├── WizardStepper.tsx
@@ -91,6 +98,7 @@ frontend-stubs/
     ├── handover-new/page.tsx       ← wizard
     ├── admin/page.tsx              ← ADMIN users console
     ├── reports/page.tsx            ← Reports & Export
+    ├── settings/page.tsx           ← Settings (self-service profile + prefs + security)
     └── auth/
         ├── route.example.ts        ← `app/api/auth/[...nextauth]/route.ts`
         ├── signin/page.tsx         ← `app/(auth)/signin/page.tsx`
@@ -156,6 +164,7 @@ The four files in `examples/` correspond directly to App Router routes:
 | `examples/auth/signin/page.tsx`   | `app/(auth)/signin/page.tsx`                  |
 | `examples/auth/forbidden/page.tsx`| `app/forbidden/page.tsx`                      |
 | `examples/auth/route.example.ts`  | `app/api/auth/[...nextauth]/route.ts`         |
+| `examples/settings/page.tsx`      | `app/(app)/settings/page.tsx`                 |
 
 > Gate `app/(admin)/**` in your `middleware.ts` (or a layout-level
 > auth guard) by checking `can(currentUser.role, 'manageUsers')` —
@@ -252,6 +261,68 @@ detail page. The example page (`examples/reports/page.tsx`) demonstrates:
 - `permissions.ts` mirrors the BR-12 / `shared/roles.md` matrix. Use
   `can(role, 'createHandover')` etc. for client-side hint-rendering, but
   always re-enforce in your route handlers.
+
+---
+
+## Settings page (self-service)
+
+`<SettingsLayout>` is a hash-routed shell that hosts three self-service
+sections without spawning three Next.js routes. Drop the example at
+`app/(app)/settings/page.tsx` and link to it from `<UserMenu>`.
+
+| Section       | Component                  | Backed by                                                 |
+| ------------- | -------------------------- | --------------------------------------------------------- |
+| Profile       | `<ProfileSection>`         | `GET\|PATCH /api/v1/users/me` (recommended new endpoint)  |
+| Preferences   | `<PreferencesSection>`     | Cookies (`occ_theme`, `occ_locale`, `occ_density`, `occ_default_shift`) — no API |
+| Security      | `<SecuritySection>`        | `POST /api/v1/users/me/password` + `POST /api/v1/users/me/sessions/revoke` (recommended new endpoints) |
+
+Hash routing — `#profile` / `#preferences` / `#security` — means deep
+links from emails or audit-trail entries land on the right section
+without extra route files. The component listens to `hashchange` and
+also writes back via `history.replaceState`, so back/forward navigation
+within Settings stays smooth and never grows the history stack.
+
+### Permissions
+
+`<ProfileSection canEditPrivilegedFields={false}>` (default) leaves
+`email` read-only and the `role` badge non-interactive — appropriate
+for a user editing their own profile. Admins editing **someone else's**
+profile should keep using `<UserFormDialog>` from PR #3 instead, since
+that flow lives in `app/(admin)/users/page.tsx` and reuses the
+`UserUpdateInput` shape.
+
+### API gap
+
+The endpoints listed above are **NOT** yet documented in
+`shared/API_SPEC.md`. The stubs are written so an integrator can either:
+
+1. **Add the recommended endpoints** (preferred — keeps the URL surface
+   "/me"-shaped and lets the backend bind to `session.user.id`
+   automatically).
+2. **Reuse `PATCH /api/v1/users/:id`** with `id = session.user.id`. The
+   backend authorization layer must reject non-self edits when the
+   caller is not ADMIN. The `ChangePasswordInput` shape isn't usable
+   here without a new endpoint, since the current admin update accepts
+   a plain `password` field but does NOT verify `currentPassword`.
+
+The `ChangePasswordInput` type carries a doc-comment flagging this gap.
+
+### Password strength
+
+`<PasswordStrengthMeter>` is a pure-React 4-bar meter scored by
+`scorePassword()` (length + char-class heuristic, no `zxcvbn`
+dependency). It's a UI hint only — server-side enforcement of password
+policy is still required.
+
+### What this is NOT
+
+- Not a full session manager. The "Sign out from all sessions" CTA is
+  optional; if you don't pass `onSignOutAllSessions`, the button is
+  hidden.
+- Not a 2FA enrolment flow. Add `<SecuritySection.TwoFactor>` later
+  once the backend supports TOTP.
+- Not a notification preferences screen. Add when push/email
+  notifications land.
 
 ---
 
