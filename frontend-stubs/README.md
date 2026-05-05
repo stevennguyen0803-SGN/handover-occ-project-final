@@ -81,6 +81,9 @@ frontend-stubs/
 │   │   ├── PreferencesSection.tsx  ← theme + locale + density + default shift
 │   │   ├── SecuritySection.tsx     ← change password + sign-out-all-sessions
 │   │   └── PasswordStrengthMeter.tsx ← length + char-class scoring
+│   ├── cmdk/                       ← Command palette + shortcuts overlay
+│   │   ├── CommandPalette.tsx      ← Cmd+K modal (fuzzy search, ↑↓, Enter)
+│   │   └── ShortcutsOverlay.tsx    ← "?" modal listing all keyboard chords
 │   └── wizard/
 │       ├── HandoverWizard.tsx      ← 3-step orchestrator
 │       ├── WizardStepper.tsx
@@ -99,6 +102,7 @@ frontend-stubs/
     ├── admin/page.tsx              ← ADMIN users console
     ├── reports/page.tsx            ← Reports & Export
     ├── settings/page.tsx           ← Settings (self-service profile + prefs + security)
+    ├── cmdk/page.tsx                ← page-scoped command registration sample
     └── auth/
         ├── route.example.ts        ← `app/api/auth/[...nextauth]/route.ts`
         ├── signin/page.tsx         ← `app/(auth)/signin/page.tsx`
@@ -323,6 +327,108 @@ policy is still required.
   once the backend supports TOTP.
 - Not a notification preferences screen. Add when push/email
   notifications land.
+
+---
+
+## Command palette (Cmd+K) + Shortcuts overlay (?)
+
+`<AppShell>` now mounts a `<CommandPaletteProvider>` and renders both
+overlays at the root of the layout. No additional wiring is required
+— after copying the `frontend-stubs/` source, your existing pages get
+the palette and shortcuts overlay for free.
+
+### Default keystrokes
+
+| Chord                  | What it does                                         |
+| ---------------------- | ---------------------------------------------------- |
+| `Cmd+K` / `Ctrl+K`     | Toggle the command palette (works inside text inputs) |
+| `?`                    | Toggle the shortcuts overlay                         |
+| `/`                    | Focus the topbar search                              |
+| `Esc`                  | Close any open overlay                               |
+| `N`                    | New handover                                         |
+| `D`                    | Go to dashboard                                      |
+| `L`                    | Go to handover log                                   |
+| `T`                    | Toggle light/dark theme                              |
+| `A`                    | Acknowledge (page-scoped — only on detail pages)     |
+
+The single-letter chords are intentionally suppressed when focus is in
+an `<input>`, `<textarea>`, `<select>` or `contenteditable` element.
+`Cmd+K` is the only chord that intentionally works inside text inputs
+so users can summon the palette without leaving the search box.
+
+### Built-in commands
+
+The default registry (in `lib/commands.ts`) ships with:
+
+- **Navigation:** Dashboard, Handover Log, Reports (ADMIN/SUPERVISOR/MANAGEMENT_VIEWER), Admin Users (ADMIN), Settings
+- **Actions:** New handover, Sign out (when `<AppShell onSignOut>` is provided)
+- **Preferences:** Toggle theme, Toggle locale (VI/EN)
+- **Help:** Show keyboard shortcuts
+
+Each command carries a `group` for sectioned rendering, optional
+`kbd` for the keyboard chord shown in both UIs, optional `keywords`
+that the fuzzy matcher searches alongside the title, and optional
+`availableWhen: ReadonlyArray<UserRole>` to gate visibility per role.
+
+### Registering page-scoped commands
+
+Any client component below `<AppShell>` can register additional
+commands for the lifetime of that component:
+
+```tsx
+'use client';
+import { useMemo } from 'react';
+import { useRegisterCommands } from '@/hooks/useCommandPalette';
+
+export function HandoverDetailCommands({ handoverId, onAcknowledge }: { handoverId: string; onAcknowledge: () => Promise<void> }) {
+  const commands = useMemo(() => [
+    {
+      id: `handover.${handoverId}.acknowledge`,
+      titleKey: 'detail.acknowledge' as const,
+      group: 'actions' as const,
+      kbd: { key: 'A' },
+      icon: '✓',
+      run: onAcknowledge,
+    },
+  ], [handoverId, onAcknowledge]);
+
+  useRegisterCommands(commands);
+  return null;
+}
+```
+
+When the component unmounts, the commands disappear from the palette
+and from the shortcuts overlay automatically. **Pass a stable
+reference** (e.g. via `useMemo`) — re-creating the array on every
+render would re-register every render and produce flicker.
+
+A worked example lives in `examples/cmdk/page.tsx` (handover detail
+case: Acknowledge / Carry forward / Export CSV).
+
+### Fuzzy matcher
+
+`lib/fuzzy.ts` is a tiny zero-dependency matcher (~50 lines) tuned for
+command palettes:
+
+- Match-at-start gets the highest bonus, then match-after-separator,
+  then consecutive-run, then any-position.
+- Distance between matches is a small negative tie-breaker so contiguous
+  spans rank above scattered ones.
+- `highlightMatch()` returns chunks tagged `match: true|false` for
+  bolding matched characters in the rendered title.
+
+Replace with `match-sorter` or `cmdk` (the npm package) if you want a
+heavier matcher — the API surface is intentionally small.
+
+### What this is NOT
+
+- Not a global app store. The palette only knows about commands that
+  have been registered with it; route-state is still owned by your app.
+- Not a Spotlight clone. There's no recents/frecency tracking yet —
+  the order is purely score-based. Add `localStorage`-free persistence
+  later if you want recent commands sticky.
+- Not a substitute for a search bar. Free-text fleet search ("HVN217",
+  "VVNB") still belongs in the topbar `<input>` (`/` shortcut).
 
 ---
 
