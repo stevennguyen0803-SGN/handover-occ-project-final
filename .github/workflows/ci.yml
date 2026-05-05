@@ -75,6 +75,11 @@ jobs:
           - 5432:5432
 
     env:
+      # NODE_ENV is intentionally NOT set at the job level: setting it to
+      # `production` causes `npm ci` to skip devDependencies (e.g. typescript,
+      # tsx, vitest) which the build / seed scripts require. The Playwright
+      # `webServer` blocks set NODE_ENV=production per server when launching
+      # the prebuilt apps.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/occ_handover
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/occ_handover
       NEXTAUTH_SECRET: ci-e2e-secret
@@ -84,7 +89,6 @@ jobs:
       BACKEND_URL: http://localhost:4000
       BCRYPT_ROUNDS: '4'
       LOG_LEVEL: warn
-      NODE_ENV: production
 
     steps:
       - name: Check out repository
