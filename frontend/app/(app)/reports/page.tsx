@@ -106,7 +106,8 @@ export default function ReportsPage() {
         <div>
           <h1 className="text-2xl font-bold text-fg">Reports & Export</h1>
           <p className="text-sm text-fg-mute">
-            Filter handovers by date range and export to CSV.
+            Filter handovers by date range and export to CSV. Per BR-14,
+            PDF export is per-handover — use the PDF link in each row.
           </p>
         </div>
         <ExportButton

@@ -75,6 +75,7 @@ export function ReportPreview({ dataset, printMode = false }: ReportPreviewProps
               <th className="px-2 py-1.5">Priority</th>
               <th className="px-2 py-1.5">Status</th>
               <th className="px-2 py-1.5">Items O / M / R</th>
+              <th className="px-2 py-1.5 print:hidden">PDF</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line-soft">
@@ -94,6 +95,16 @@ export function ReportPreview({ dataset, printMode = false }: ReportPreviewProps
                 </td>
                 <td className="px-2 py-1.5 font-mono text-xs">
                   {row.itemCounts.open} / {row.itemCounts.monitoring} / {row.itemCounts.resolved}
+                </td>
+                <td className="px-2 py-1.5 print:hidden">
+                  <a
+                    href={`/api/v1/handovers/${encodeURIComponent(row.id)}/export/pdf?autoPrint=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent hover:underline"
+                  >
+                    Export
+                  </a>
                 </td>
               </tr>
             ))}
