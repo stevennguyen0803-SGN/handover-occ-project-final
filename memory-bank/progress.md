@@ -6,12 +6,24 @@
 | Phase | Status | Percent Done | Target Date |
 | --- | --- | --- | --- |
 | Phase 1: Business Alignment and Design | Done | 100% | 2026-04-21 |
-| Phase 2: MVP Build | Done | 100% | 2026-04-23 |
-| Phase 3: Workflow Enhancement | Done | 100% | 2026-04-23 |
-| Phase 4: Pilot Deployment and UAT | In Progress | 92% | TBD |
+| Phase 2: MVP Build (backend) | Done | 100% | 2026-04-23 |
+| Phase 2: MVP Build (frontend) | Not Started — never landed in repo | 0% | TBD |
+| Phase 3: Workflow Enhancement (backend) | Done | 100% | 2026-04-23 |
+| Phase 4: Pilot Deployment and UAT | Reset by 2026-05-05 backend-only refactor | — | TBD |
 | Phase 5: Production Rollout | Not Started | 0% | TBD |
 
+> **2026-05-05 status correction.** The previous "Phase 2 frontend / Phase 4 staging" rows in this log claimed deliverables that lived only in `frontend-stubs/` (design stubs) or referenced files that were never committed (the `frontend/` directory was empty, the staging Docker stack and `verify:staging:local` path are gone). Earlier "Completed" entries below are kept for historical reference but should not be read as production milestones.
+
 ## Completed
+
+### 2026-05-05 — Backend-only refactor
+- **2026-05-05**: Refactored repo to a backend-only posture. Removed empty `frontend/`, legacy `prototype/`, committed build artifacts `backend/tempdist/`, staging Docker (`Dockerfile`, `.dockerignore`, `infrastructure/staging/`), and staging orchestration scripts (`start-staging.mjs`, `verify-local-staging.mjs`, `verify-uat-scenarios.mjs`, `perf-check.mjs`, `sync-frontend-prisma-client.mjs`).
+- **2026-05-05**: Rewrote root `package.json` (backend-only scripts), `.gitignore` (added `tempdist/`, `dist/`), `.env.example` (backend-only env vars), `tsconfig.json` (excludes deleted dirs), `vitest.config.mts` (unit-only) and added `vitest.smoke.config.mts` (smoke-only).
+- **2026-05-05**: Replaced `.github/workflows/deploy-staging.yml` with `.github/workflows/ci.yml` — checkout → install → `db:generate` → `npm test` → `npm run build`. No more Docker compose validation.
+- **2026-05-05**: Added `createBackendAuthHeaders()` to `backend/src/lib/auth-bridge.ts` and rewrote `tests/unit/auth.test.ts` to use it instead of missing `frontend/lib/backend-auth` and `frontend/lib/auth-helpers` modules. Dropped the two frontend-only redirect tests (`getAuthRedirectPath`, `isAuthorizedPath`).
+- **2026-05-05**: Removed `FRONTEND_URL` `/login` probe from `tests/smoke/smoke.test.ts` so it only smokes backend.
+- **2026-05-05**: Added a real `README.md` documenting setup, env vars, scripts, the API surface, and the `X-OCC-AUTH-*` signing protocol.
+- **2026-05-05**: Verified locally — `npm install`, `npm --prefix backend install`, `npm run db:generate`, `npm run build`, `npm test` (48 unit tests passing) all succeed.
 
 ### 2026-04 - Phase 1 kickoff and Phase 2 delivery
 - **2026-04-21**: Read the core planning docs, mapped Phase 1 execution order, identified seeded doc gaps, and created `memory-bank/`, `AGENTS.md`, and `CLAUDE.md`.

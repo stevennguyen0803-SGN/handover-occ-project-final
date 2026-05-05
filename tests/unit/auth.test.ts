@@ -2,11 +2,7 @@ import { UserRole } from '@prisma/client'
 import type { Request, Response } from 'express'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createBackendAuthHeaders } from '../../frontend/lib/backend-auth'
-import {
-  getAuthRedirectPath,
-  isAuthorizedPath,
-} from '../../frontend/lib/auth-helpers'
+import { createBackendAuthHeaders } from '../../backend/src/lib/auth-bridge'
 import { attachAuthenticatedUser } from '../../backend/src/middleware/auth.middleware'
 import { requireRole } from '../../backend/src/middleware/role.middleware'
 
@@ -49,14 +45,6 @@ describe('auth middleware', () => {
 
   afterEach(() => {
     delete process.env.NEXTAUTH_SECRET
-  })
-
-  it('redirects unauthenticated users to /login', () => {
-    expect(getAuthRedirectPath('/', false)).toBe('/login')
-  })
-
-  it('allows authenticated users through', () => {
-    expect(isAuthorizedPath('/', true)).toBe(true)
   })
 
   it('blocks wrong role with 403', () => {

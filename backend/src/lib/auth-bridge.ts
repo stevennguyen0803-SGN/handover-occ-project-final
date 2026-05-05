@@ -70,6 +70,30 @@ function signaturesMatch(expected: string, actual: string): boolean {
   return timingSafeEqual(expectedBuffer, actualBuffer)
 }
 
+export function createBackendAuthHeaders(
+  user: AuthenticatedUser,
+  timestamp: string = Date.now().toString()
+): Record<string, string> {
+  const secret = getAuthSecret()
+
+  if (!secret) {
+    throw new Error(
+      'NEXTAUTH_SECRET (or AUTH_SECRET) must be set to sign backend auth headers'
+    )
+  }
+
+  const signature = buildBackendAuthSignature(user, timestamp, secret)
+
+  return {
+    [backendAuthHeaderNames.id]: user.id,
+    [backendAuthHeaderNames.name]: user.name,
+    [backendAuthHeaderNames.email]: user.email,
+    [backendAuthHeaderNames.role]: user.role,
+    [backendAuthHeaderNames.timestamp]: timestamp,
+    [backendAuthHeaderNames.signature]: signature,
+  }
+}
+
 export function extractAuthenticatedUserFromRequest(
   req: Pick<Request, 'header'>
 ): AuthenticatedUser | null {
