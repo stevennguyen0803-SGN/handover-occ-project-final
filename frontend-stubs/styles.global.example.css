@@ -1,0 +1,114 @@
+/* =====================================================================
+ * Drop this into the Next.js app's globals.css (or as a layer base file).
+ * It re-exposes the design tokens from `prototype/styles.css` so the
+ * Tailwind utilities defined in `tailwind.config.example.ts` resolve.
+ * ===================================================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Priority palette */
+    --p-critical: #d92d20;
+    --p-critical-bg: #fee4e2;
+    --p-critical-fg: #7a271a;
+    --p-high: #f79009;
+    --p-high-bg: #fef0c7;
+    --p-high-fg: #7a2e0e;
+    --p-normal: #2e90fa;
+    --p-normal-bg: #d1e9ff;
+    --p-normal-fg: #194185;
+    --p-low: #12b76a;
+    --p-low-bg: #d1fadf;
+    --p-low-fg: #054f31;
+
+    /* Status palette */
+    --s-open: #f79009;
+    --s-open-bg: #fef0c7;
+    --s-monitoring: #2e90fa;
+    --s-monitoring-bg: #d1e9ff;
+    --s-resolved: #12b76a;
+    --s-resolved-bg: #d1fadf;
+
+    /* Light theme */
+    --bg: #f5f1ea;
+    --bg-elev: #fffdf8;
+    --bg-side: #fdf9f1;
+    --bg-row: #fdf6e7;
+    --line: #e6dfd2;
+    --line-soft: #efe9dc;
+    --fg: #1f2a37;
+    --fg-soft: #4b5563;
+    --fg-mute: #6b7280;
+    --fg-faint: #98a2b3;
+    --accent: #0d8a85;
+    --accent-strong: #086f6c;
+    --accent-soft: #cfeae8;
+    --accent-fg: #ffffff;
+  }
+
+  [data-theme='dark'] {
+    --bg: #0b1220;
+    --bg-elev: #111a2c;
+    --bg-side: #0e1626;
+    --bg-row: #131e35;
+    --line: #243049;
+    --line-soft: #1c2740;
+    --fg: #eef2f7;
+    --fg-soft: #cbd5e1;
+    --fg-mute: #94a3b8;
+    --fg-faint: #64748b;
+    --accent: #4dd0c8;
+    --accent-strong: #6fdcd5;
+    --accent-soft: #103934;
+    --accent-fg: #06241f;
+
+    --p-critical-bg: #4a1816;
+    --p-critical-fg: #fecaca;
+    --p-high-bg: #4a3010;
+    --p-high-fg: #fde2b3;
+    --p-normal-bg: #11304f;
+    --p-normal-fg: #c4def8;
+    --p-low-bg: #103a25;
+    --p-low-fg: #b9ecca;
+
+    --s-open-bg: #4a3010;
+    --s-monitoring-bg: #11304f;
+    --s-resolved-bg: #103a25;
+  }
+
+  [data-shift='morning'] {
+    --shift-color: #f4b740;
+    --shift-color-bg: #fde7a8;
+    --shift-color-fg: #5e4304;
+  }
+  [data-shift='afternoon'] {
+    --shift-color: #f97316;
+    --shift-color-bg: #fed7aa;
+    --shift-color-fg: #6c2c0a;
+  }
+  [data-shift='night'] {
+    --shift-color: #6366f1;
+    --shift-color-bg: #c7d2fe;
+    --shift-color-fg: #1e1b4b;
+  }
+  [data-theme='dark'][data-shift='morning'] {
+    --shift-color-bg: #4d3c0c;
+    --shift-color-fg: #fde7a8;
+  }
+  [data-theme='dark'][data-shift='afternoon'] {
+    --shift-color-bg: #4a2410;
+    --shift-color-fg: #fed7aa;
+  }
+  [data-theme='dark'][data-shift='night'] {
+    --shift-color-bg: #20214b;
+    --shift-color-fg: #c7d2fe;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+  }
+}
