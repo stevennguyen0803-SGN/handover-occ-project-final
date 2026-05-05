@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="vi" data-theme="light" data-shift="morning">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>OCC Handover · Friendly Redesign Prototype</title>
+    <link rel="icon" href="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'&gt;&lt;text y='52' font-size='52'&gt;&#x1F6E9;&lt;/text&gt;&lt;/svg&gt;" />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script defer src="seed.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <!-- Login screen (shown when no role selected) -->
+    <div id="login" class="login" hidden>
+      <div class="login__card">
+        <div class="brand brand--lg">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l3-9 4 18 3-9h5"/></svg>
+          </span>
+          <span class="brand__text">
+            <strong>OCC Handover</strong>
+            <small data-i18n="brand.subtitle">Shift Management System</small>
+          </span>
+        </div>
+        <h1 class="login__title" data-i18n="login.title">Đăng nhập demo</h1>
+        <p class="login__hint" data-i18n="login.hint">Chọn role bên dưới để xem prototype với quyền tương ứng.</p>
+        <div class="role-grid" id="role-grid"></div>
+        <p class="login__note" data-i18n="login.note">Đây là prototype tĩnh. Dữ liệu lưu ở trình duyệt (localStorage). Không có backend thật.</p>
+      </div>
+    </div>
+
+    <!-- App shell -->
+    <div id="app" class="app" hidden>
+      <!-- Top bar -->
+      <header class="topbar" role="banner">
+        <button class="iconbtn topbar__menu" id="open-sidebar" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+
+        <a class="brand" href="#/dashboard">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l3-9 4 18 3-9h5"/></svg>
+          </span>
+          <span class="brand__text">
+            <strong>OCC Handover</strong>
+            <small data-i18n="brand.subtitle">Shift Management System</small>
+          </span>
+        </a>
+
+        <div class="topbar__center">
+          <div class="searchbar" role="search">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="global-search" type="search" autocomplete="off" data-i18n-placeholder="search.placeholder" placeholder="Tìm reference, flight, station, owner…" />
+            <kbd>/</kbd>
+          </div>
+        </div>
+
+        <div class="topbar__right">
+          <div class="shift-clock" aria-live="polite">
+            <span class="shift-clock__time" id="clock-time">--:--:--</span>
+            <span class="shift-clock__date" id="clock-date">--</span>
+            <span class="shift-clock__chip" id="shift-chip">
+              <span aria-hidden="true">●</span>
+              <span data-i18n="shift.morning">Morning</span>
+            </span>
+          </div>
+          <div class="topbar__divider" aria-hidden="true"></div>
+          <button class="iconbtn" id="lang-toggle" aria-label="Đổi ngôn ngữ">
+            <span class="iconbtn__label" id="lang-label">VI</span>
+          </button>
+          <button class="iconbtn" id="theme-toggle" aria-label="Đổi giao diện sáng/tối">
+            <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button class="user-menu" id="role-button" aria-haspopup="menu" aria-expanded="false">
+            <span class="user-menu__avatar" id="user-initials">UA</span>
+            <span class="user-menu__meta">
+              <strong id="user-name">User</strong>
+              <small id="user-role">Role</small>
+            </span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="user-menu__dropdown" id="role-menu" hidden role="menu" aria-labelledby="role-button"></div>
+        </div>
+      </header>
+
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar" aria-label="Primary">
+        <nav class="sidenav" aria-label="Primary">
+          <p class="sidenav__heading" data-i18n="nav.main">Chính</p>
+          <a class="sidenav__item" data-route="dashboard" href="#/dashboard">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span data-i18n="nav.dashboard">Dashboard</span>
+          </a>
+          <a class="sidenav__item" data-route="new" href="#/new">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span data-i18n="nav.new">Tạo Handover</span>
+          </a>
+          <a class="sidenav__item" data-route="log" href="#/log">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span data-i18n="nav.log">Handover Log</span>
+          </a>
+
+          <p class="sidenav__heading" data-i18n="nav.tools">Tiện ích</p>
+          <a class="sidenav__item" data-route="audit" href="#/audit">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            <span data-i18n="nav.audit">Audit Trail</span>
+          </a>
+          <a class="sidenav__item" data-route="help" href="#/help">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span data-i18n="nav.help">Hướng dẫn</span>
+          </a>
+        </nav>
+
+        <div class="sidenav__footer">
+          <button class="logout" id="logout">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span data-i18n="nav.logout">Đăng xuất</span>
+          </button>
+          <p class="sidenav__demo" title="Local Storage demo">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+            <span><span data-i18n="footer.localStorage">Local Storage</span> · <span id="record-count">0</span> records</span>
+          </p>
+        </div>
+      </aside>
+
+      <!-- Critical alert banner -->
+      <div id="critical-banner" class="alert alert--critical" hidden role="alert">
+        <span class="alert__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        <div class="alert__content">
+          <strong id="critical-banner-title">1 handover Critical chưa được acknowledge</strong>
+          <p id="critical-banner-body">Khẩn trương review để bàn giao ca an toàn.</p>
+        </div>
+        <a class="alert__action" id="critical-banner-link" href="#/log?priority=Critical&unack=1" data-i18n="banner.review">Review ngay →</a>
+        <button class="alert__close" id="critical-banner-close" aria-label="Đóng">×</button>
+      </div>
+
+      <!-- Main view -->
+      <main id="main" class="content" tabindex="-1">
+        <div id="view-root"></div>
+      </main>
+
+      <!-- Sidebar scrim (mobile) -->
+      <div class="scrim" id="scrim" hidden></div>
+
+      <!-- Floating action button (mobile) -->
+      <a class="fab" href="#/new" aria-label="Tạo Handover mới">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </a>
+
+      <!-- Toast region -->
+      <div class="toasts" id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+      <!-- Keyboard shortcut help (?) -->
+      <div class="modal" id="shortcut-modal" hidden role="dialog" aria-modal="true" aria-labelledby="shortcut-title">
+        <div class="modal__panel">
+          <header class="modal__header">
+            <h2 id="shortcut-title" data-i18n="shortcuts.title">Phím tắt</h2>
+            <button class="iconbtn" id="shortcut-close" aria-label="Đóng">×</button>
+          </header>
+          <ul class="shortcuts">
+            <li><kbd>N</kbd><span data-i18n="shortcuts.new">Tạo handover mới</span></li>
+            <li><kbd>/</kbd><span data-i18n="shortcuts.search">Mở thanh tìm kiếm</span></li>
+            <li><kbd>D</kbd><span data-i18n="shortcuts.dashboard">Về Dashboard</span></li>
+            <li><kbd>L</kbd><span data-i18n="shortcuts.log">Về Handover Log</span></li>
+            <li><kbd>A</kbd><span data-i18n="shortcuts.ack">Acknowledge handover (ở chi tiết)</span></li>
+            <li><kbd>T</kbd><span data-i18n="shortcuts.theme">Đổi sáng / tối</span></li>
+            <li><kbd>?</kbd><span data-i18n="shortcuts.help">Mở hộp thoại này</span></li>
+            <li><kbd>Esc</kbd><span data-i18n="shortcuts.esc">Đóng hộp thoại / huỷ tìm</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- View templates -->
+    <template id="tpl-dashboard">
+      <section class="page" data-view="dashboard">
+        <header class="page__head">
+          <div>
+            <p class="page__eyebrow" data-i18n="dashboard.eyebrow">Bảng điều hành</p>
+            <h1 class="page__title" data-i18n="dashboard.title">Tổng quan ca trực</h1>
+            <p class="page__subtitle" id="dashboard-subtitle">— · — · —</p>
+          </div>
+          <div class="page__actions">
+            <button class="btn btn--ghost" id="btn-export-csv">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span data-i18n="action.exportCsv">Export CSV</span>
+            </button>
+            <button class="btn btn--ghost" id="btn-export-pdf">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              <span data-i18n="action.printPdf">Print / PDF</span>
+            </button>
+            <a class="btn btn--primary" href="#/new">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span data-i18n="action.newHandover">New Handover</span>
+            </a>
+          </div>
+        </header>
+
+        <!-- Quick filter chips -->
+        <div class="chiprow" role="tablist" aria-label="Quick filters" id="quick-filters"></div>
+
+        <!-- KPI cards -->
+        <div class="kpi-grid" id="kpi-grid"></div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+          <article class="card chart-card">
+            <header class="card__head">
+              <h2 class="card__title" data-i18n="charts.byCategory">Issues theo Category</h2>
+              <p class="card__sub" data-i18n="charts.byCategorySub">Phân loại trên tất cả handovers đang mở</p>
+            </header>
+            <div class="card__body chart-card__body"><canvas id="chart-category"></canvas></div>
+          </article>
+          <article class="card chart-card">
+            <header class="card__head">
+              <h2 class="card__title" data-i18n="charts.priority">Phân bố mức ưu tiên</h2>
+              <p class="card__sub" data-i18n="charts.prioritySub">Tất cả ca trong 30 ngày</p>
+            </header>
+            <div class="card__body chart-card__body"><canvas id="chart-priority"></canvas></div>
+          </article>
+          <article class="card chart-card">
+            <header class="card__head">
+              <h2 class="card__title" data-i18n="charts.shift">Hoạt động theo ca</h2>
+              <p class="card__sub" data-i18n="charts.shiftSub">Số handover trong 30 ngày qua</p>
+            </header>
+            <div class="card__body chart-card__body"><canvas id="chart-shift"></canvas></div>
+          </article>
+          <article class="card chart-card">
+            <header class="card__head">
+              <h2 class="card__title" data-i18n="charts.abnormal">Ab-Normal Events</h2>
+              <p class="card__sub" data-i18n="charts.abnormalSub">Loại sự kiện bất thường gần đây</p>
+            </header>
+            <div class="card__body chart-card__body"><canvas id="chart-abnormal"></canvas></div>
+          </article>
+        </div>
+
+        <!-- Recent handovers -->
+        <article class="card">
+          <header class="card__head card__head--row">
+            <div>
+              <h2 class="card__title" data-i18n="dashboard.recent">Handovers gần đây</h2>
+              <p class="card__sub" data-i18n="dashboard.recentSub">Sắp xếp theo Priority rồi đến thời gian</p>
+            </div>
+            <div class="card__head-actions">
+              <select id="filter-shift" class="select" aria-label="Lọc theo ca">
+                <option value="">All Shifts</option>
+                <option>Morning</option>
+                <option>Afternoon</option>
+                <option>Night</option>
+              </select>
+              <select id="filter-priority" class="select" aria-label="Lọc theo priority">
+                <option value="">All Priorities</option>
+                <option>Critical</option>
+                <option>High</option>
+                <option>Normal</option>
+                <option>Low</option>
+              </select>
+              <a class="btn btn--ghost btn--sm" href="#/log" data-i18n="action.viewAll">Xem tất cả →</a>
+            </div>
+          </header>
+          <div class="card__body card__body--flush">
+            <div class="table-wrap">
+              <table class="table table--striped">
+                <thead>
+                  <tr>
+                    <th data-i18n="col.date">Ngày · Ca</th>
+                    <th data-i18n="col.ref">Reference</th>
+                    <th data-i18n="col.preparedBy">Prepared by</th>
+                    <th data-i18n="col.categories">Categories</th>
+                    <th data-i18n="col.priority">Priority</th>
+                    <th data-i18n="col.status">Status</th>
+                    <th data-i18n="col.flights">FLT</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="recent-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+    </template>
+
+    <template id="tpl-log">
+      <section class="page" data-view="log">
+        <header class="page__head">
+          <div>
+            <p class="page__eyebrow" data-i18n="log.eyebrow">Lịch sử</p>
+            <h1 class="page__title" data-i18n="log.title">Handover Log</h1>
+            <p class="page__subtitle" id="log-subtitle">—</p>
+          </div>
+          <div class="page__actions">
+            <button class="btn btn--ghost" id="btn-export-csv-log">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span data-i18n="action.exportCsv">Export CSV</span>
+            </button>
+            <a class="btn btn--primary" href="#/new">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span data-i18n="action.newHandover">New Handover</span>
+            </a>
+          </div>
+        </header>
+
+        <article class="card">
+          <header class="card__head card__head--row">
+            <div class="filters" id="log-filters"></div>
+          </header>
+          <div class="card__body card__body--flush">
+            <div class="table-wrap">
+              <table class="table table--striped">
+                <thead>
+                  <tr>
+                    <th data-i18n="col.date">Ngày · Ca</th>
+                    <th data-i18n="col.ref">Reference</th>
+                    <th data-i18n="col.preparedBy">Prepared by</th>
+                    <th data-i18n="col.categories">Categories</th>
+                    <th data-i18n="col.priority">Priority</th>
+                    <th data-i18n="col.status">Status</th>
+                    <th data-i18n="col.cf">CF</th>
+                    <th data-i18n="col.ack">Ack</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="log-tbody"></tbody>
+              </table>
+              <div class="empty" id="log-empty" hidden>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <h3 data-i18n="empty.logTitle">Không có handover phù hợp</h3>
+                <p data-i18n="empty.logHint">Thử bỏ bớt bộ lọc hoặc đổi từ khoá tìm kiếm.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </template>
+
+    <template id="tpl-detail">
+      <section class="page" data-view="detail">
+        <a class="back-link" href="#/log">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span data-i18n="action.backToLog">Quay lại Handover Log</span>
+        </a>
+
+        <header class="detail-head" id="detail-head"></header>
+
+        <div class="detail-grid">
+          <div class="detail-grid__main" id="detail-main"></div>
+          <aside class="detail-grid__side" id="detail-side"></aside>
+        </div>
+      </section>
+    </template>
+
+    <template id="tpl-new">
+      <section class="page" data-view="new">
+        <header class="page__head">
+          <div>
+            <p class="page__eyebrow" data-i18n="new.eyebrow">Tạo handover</p>
+            <h1 class="page__title" data-i18n="new.title">New Handover</h1>
+            <p class="page__subtitle" data-i18n="new.subtitle">Hoàn thành 3 bước · System tự sinh reference HDO-YYYY-NNNNNN</p>
+          </div>
+          <div class="page__actions">
+            <a class="btn btn--ghost" href="#/dashboard" data-i18n="action.cancel">Huỷ</a>
+          </div>
+        </header>
+
+        <ol class="stepper" id="stepper">
+          <li class="stepper__item is-active" data-step="1"><span class="stepper__num">1</span><span class="stepper__label" data-i18n="new.step1">Header</span></li>
+          <li class="stepper__item" data-step="2"><span class="stepper__num">2</span><span class="stepper__label" data-i18n="new.step2">Categories</span></li>
+          <li class="stepper__item" data-step="3"><span class="stepper__num">3</span><span class="stepper__label" data-i18n="new.step3">Review &amp; Submit</span></li>
+        </ol>
+
+        <article class="card">
+          <div class="card__body" id="new-body"></div>
+          <footer class="card__foot card__foot--split">
+            <button class="btn btn--ghost" id="step-back" data-i18n="action.back">← Quay lại</button>
+            <div class="card__foot-right">
+              <button class="btn btn--ghost" id="step-save" data-i18n="action.saveDraft">Lưu nháp</button>
+              <button class="btn btn--primary" id="step-next" data-i18n="action.next">Tiếp tục →</button>
+            </div>
+          </footer>
+        </article>
+      </section>
+    </template>
+
+    <template id="tpl-audit">
+      <section class="page" data-view="audit">
+        <header class="page__head">
+          <div>
+            <p class="page__eyebrow" data-i18n="audit.eyebrow">Audit</p>
+            <h1 class="page__title" data-i18n="audit.title">Audit Trail</h1>
+            <p class="page__subtitle" data-i18n="audit.subtitle">Mọi mutation đều được ghi lại (BR-09)</p>
+          </div>
+        </header>
+        <article class="card">
+          <div class="card__body card__body--flush">
+            <ol class="timeline" id="audit-timeline"></ol>
+          </div>
+        </article>
+      </section>
+    </template>
+
+    <template id="tpl-help">
+      <section class="page" data-view="help">
+        <header class="page__head">
+          <div>
+            <p class="page__eyebrow" data-i18n="help.eyebrow">Hướng dẫn</p>
+            <h1 class="page__title" data-i18n="help.title">Friendly Redesign · Design notes</h1>
+            <p class="page__subtitle" data-i18n="help.subtitle">Ghi chú thiết kế và phím tắt cho prototype</p>
+          </div>
+        </header>
+        <div class="help-grid">
+          <article class="card">
+            <header class="card__head"><h2 class="card__title" data-i18n="help.uxTitle">12 cải thiện UX so với prototype cũ</h2></header>
+            <div class="card__body">
+              <ul class="check-list">
+                <li data-i18n="help.ux1">Shift-aware theming (Morning vàng / Afternoon cam / Night tím) — nhìn 1 cái biết ca nào.</li>
+                <li data-i18n="help.ux2">Banner cảnh báo Critical chưa acknowledge nổi bật trên cùng (BR-08).</li>
+                <li data-i18n="help.ux3">KPI có ngữ cảnh: trend ↑↓, click vào lọc thẳng list.</li>
+                <li data-i18n="help.ux4">Smart filter chips (Today / Last 7d / High+ / Open / Carry-Forward).</li>
+                <li data-i18n="help.ux5">Carry-forward có visual rõ ràng: badge "Carried Forward" + link ngược.</li>
+                <li data-i18n="help.ux6">New Handover dạng 3 bước (Header → Categories → Review) đỡ choáng.</li>
+                <li data-i18n="help.ux7">Status timeline cho item: Open → Monitoring → Resolved trực quan.</li>
+                <li data-i18n="help.ux8">Empty state có gợi ý hành động, không trống lốc.</li>
+                <li data-i18n="help.ux9">Mobile-first, FAB + cho trực ca tablet.</li>
+                <li data-i18n="help.ux10">Phím tắt OCC quen tay (N/L/D/A/?).</li>
+                <li data-i18n="help.ux11">Toggle Tiếng Việt ↔ English ngay trên header.</li>
+                <li data-i18n="help.ux12">Print-ready CSS cho Print/PDF (loại bỏ sidebar, expand chi tiết).</li>
+              </ul>
+            </div>
+          </article>
+          <article class="card">
+            <header class="card__head"><h2 class="card__title" data-i18n="help.tokensTitle">Design tokens</h2></header>
+            <div class="card__body">
+              <div class="swatches" id="swatches"></div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </template>
+  </body>
+</html>
