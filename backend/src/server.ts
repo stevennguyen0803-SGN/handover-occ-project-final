@@ -3,6 +3,7 @@ import express from 'express'
 import { attachAuthenticatedUser } from './middleware/auth.middleware'
 import { dashboardRouter } from './routes/dashboard.routes'
 import { handoverRouter } from './routes/handovers.routes'
+import { usersRouter } from './routes/users.routes'
 
 export function createApp() {
   const app = express()
@@ -16,6 +17,7 @@ export function createApp() {
 
   app.use('/api/v1/dashboard', dashboardRouter)
   app.use('/api/v1/handovers', handoverRouter)
+  app.use('/api/v1/users', usersRouter)
 
   return app
 }

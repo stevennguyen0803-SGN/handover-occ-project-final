@@ -63,50 +63,76 @@ export function AdminUsersClient({
   }, [users])
 
   const handleSubmit = async (result: UserFormResult) => {
-    if (result.mode === 'create') {
-      const created: UserDetail = {
-        id: `u-${Date.now()}`,
-        email: result.payload.email,
-        name: result.payload.name,
-        role: result.payload.role,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      setUsers((prev) => [...prev, created])
-      push({
-        tone: 'success',
-        title: t('toast.userCreated'),
-        body: created.email,
-      })
-    } else {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === result.userId
-            ? {
-                ...u,
-                ...result.payload,
-                updatedAt: new Date().toISOString(),
-              }
-            : u
+    try {
+      if (result.mode === 'create') {
+        const res = await fetch('/api/v1/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(result.payload),
+        })
+        if (!res.ok) throw new Error('Failed to create user')
+        const created = (await res.json()) as UserDetail
+        setUsers((prev) => [...prev, created])
+        push({
+          tone: 'success',
+          title: t('toast.userCreated'),
+          body: created.email,
+        })
+      } else {
+        const res = await fetch(
+          `/api/v1/users/${encodeURIComponent(result.userId)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(result.payload),
+          }
         )
-      )
-      push({ tone: 'success', title: t('toast.userUpdated') })
+        if (!res.ok) throw new Error('Failed to update user')
+        const updated = (await res.json()) as UserDetail
+        setUsers((prev) =>
+          prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u))
+        )
+        push({ tone: 'success', title: t('toast.userUpdated') })
+      }
+    } catch {
+      push({ tone: 'error', title: t('settings.toast.error') })
     }
   }
 
   const handleToggleActive = async (user: UserDetail) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === user.id ? { ...u, isActive: !u.isActive } : u
+    try {
+      let nextUser: UserDetail
+      if (user.isActive) {
+        const res = await fetch(
+          `/api/v1/users/${encodeURIComponent(user.id)}`,
+          { method: 'DELETE' }
+        )
+        if (!res.ok) throw new Error('Failed to deactivate')
+        nextUser = (await res.json()) as UserDetail
+      } else {
+        const res = await fetch(
+          `/api/v1/users/${encodeURIComponent(user.id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isActive: true }),
+          }
+        )
+        if (!res.ok) throw new Error('Failed to reactivate')
+        nextUser = (await res.json()) as UserDetail
+      }
+      setUsers((prev) =>
+        prev.map((u) => (u.id === nextUser.id ? { ...u, ...nextUser } : u))
       )
-    )
-    push({
-      tone: 'success',
-      title: user.isActive
-        ? t('toast.userDeactivated')
-        : t('toast.userReactivated'),
-    })
+      push({
+        tone: 'success',
+        title: user.isActive
+          ? t('toast.userDeactivated')
+          : t('toast.userReactivated'),
+      })
+    } catch {
+      push({ tone: 'error', title: t('settings.toast.error') })
+    }
   }
 
   return (
