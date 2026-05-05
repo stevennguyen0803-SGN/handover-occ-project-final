@@ -47,6 +47,7 @@
     --accent-strong: #086f6c;
     --accent-soft: #cfeae8;
     --accent-fg: #ffffff;
+    --overlay: rgb(15 23 42 / 0.55);
   }
 
   [data-theme='dark'] {
@@ -64,6 +65,7 @@
     --accent-strong: #6fdcd5;
     --accent-soft: #103934;
     --accent-fg: #06241f;
+    --overlay: rgb(2 6 16 / 0.7);
 
     --p-critical-bg: #4a1816;
     --p-critical-fg: #fecaca;
@@ -110,5 +112,57 @@
   body {
     background: var(--bg);
     color: var(--fg);
+  }
+}
+
+/* =====================================================================
+ * Print rules — used by the Reports page (`@media print`) so the export
+ * preview prints cleanly without sidebars, top bars, or toasts.
+ * Apply `print:hidden` on chrome elements; wrap the printable area in
+ * a `<div class="print-region">` for the explicit safelist below.
+ * ===================================================================== */
+@media print {
+  :root {
+    --bg: #ffffff;
+    --bg-elev: #ffffff;
+    --bg-side: #ffffff;
+    --bg-row: #ffffff;
+    --fg: #111111;
+    --fg-soft: #333333;
+    --fg-mute: #555555;
+    --fg-faint: #777777;
+    --line: #cccccc;
+    --line-soft: #e5e5e5;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  .print\:hidden,
+  nav,
+  aside,
+  header[data-app-topbar],
+  [data-toast-region],
+  [data-app-sidebar],
+  [data-app-banner],
+  [data-app-fab] {
+    display: none !important;
+  }
+
+  .print-region {
+    background: #ffffff !important;
+    color: #111111 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .print-page-break {
+    break-before: page;
+  }
+
+  a[href]::after {
+    content: '';
   }
 }

@@ -32,6 +32,7 @@ const config: Config = {
         'accent-strong': 'var(--accent-strong)',
         'accent-soft': 'var(--accent-soft)',
         'accent-fg': 'var(--accent-fg)',
+        overlay: 'var(--overlay)',
         shift: 'var(--shift-color)',
         'shift-bg': 'var(--shift-color-bg)',
         'shift-fg': 'var(--shift-color-fg)',
